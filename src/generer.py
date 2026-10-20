@@ -1377,6 +1377,232 @@ PARTS_EP.append({"title": "Bilan : les atouts et les points à améliorer", "min
         "ils ne coûtent rien.</p>", etiquettes=E_BILAN, liste="Bilan"),
 ]})
 
+# ============================================================ EXERCICE 2.1 — ITI OU ITE : CHOISIR SON ISOLATION
+# Prolonge l'exercice 1.2 : le même mur en parpaing, isolé par l'intérieur ou par l'extérieur. Calcul thermique avec
+# les ponts thermiques des planchers, trois climats français, déphasage (formule simple), inertie et occupation,
+# rénovation ou construction neuve. Données et hypothèses : DT1 à DT3 (« ii-DT1 » à « ii-DT3 »).
+E_II = ["Isolation par l'intérieur (ITI)", "Isolation par l'extérieur (ITE)", "Pont thermique", "Isolant",
+        "Mur porteur", "Plancher", "Enduit", "Lame d'air", "Plaque de plâtre"]
+E_PRIORITE = ["Priorité à l'hiver : isoler fort, traiter les ponts thermiques",
+              "Priorité à l'été : inertie, déphasage, protections solaires", "Climat doux et tempéré toute l'année"]
+E_HEURE = ["En fin d'après-midi, vers 17 h", "En soirée, vers 22 h", "Au petit matin, vers 6 h 30",
+           "Le lendemain midi"]
+E_MASSE = ["Dans le volume chauffé, côté intérieur", "Hors du volume chauffé, côté extérieur"]
+E_INERTIE = ["Forte", "Faible"]
+E_ATOUT = ["Atout de l'ITI", "Atout de l'ITE"]
+ITI, ITE = KW(P("iti")), KW(P("ite"))
+
+PARTS_II = []
+
+# ------------------------------------------------------------ Partie 1 : deux procédés
+PARTS_II.append({"title": "Deux façons d'isoler le même mur", "minutes": 10, "intro": [
+    "<p>On isole un mur en parpaing <b>par l'intérieur</b> (ITI : l'isolant est posé contre sa face intérieure, puis "
+    "habillé d'une plaque de plâtre) ou <b>par l'extérieur</b> (ITE : l'isolant enveloppe la façade, puis reçoit un "
+    "enduit ou un bardage) : figures 3 et 4 du cours, reprises dans le DT1. La figure 1 compare les deux procédés au "
+    "droit du plancher de l'étage.</p>"],
+    "plan": dict(plans.iti_ite(), caption="Figure 1 — Le même mur en coupe verticale, au droit du plancher de l'étage, "
+                 "isolé de deux façons. Les flèches rouges figurent la chaleur qui s'échappe : les 6 cases repérées en "
+                 "rouge reçoivent les étiquettes."),
+    "blocks": [
+    QBAR(["DT1"], "sur la figure 1"),
+    GRP("Nomme les deux procédés et les éléments repérés sur la figure 1.", "Une étiquette par case ; trois "
+        "étiquettes ne servent pas.", [
+        ("Repère 1", ITI, "Isolation par l'intérieur (ITI)"), ("Repère 2", ITE, "Isolation par l'extérieur (ITE)"),
+        ("Repère 3", KW(P("pont")), "Pont thermique"), ("Repère 4", KW(P("isolant")), "Isolant"),
+        ("Repère 5", KW(P("porteur")), "Mur porteur"), ("Repère 6", KW(P("plancher")), "Plancher")],
+        "<ul><li><b>À gauche, ITI</b> : l'isolant est côté intérieur. Le plancher, qui s'appuie sur le mur porteur, le "
+        "coupe : par cette liaison en béton, la chaleur file vers l'extérieur. C'est un <b>pont thermique</b> (repère "
+        "3).</li><li><b>À droite, ITE</b> : l'<b>isolant</b> (4) passe devant le <b>mur porteur</b> (5) et devant le "
+        "<b>plancher</b> (6) sans interruption : le pont thermique disparaît, il ne reste qu'un faible flux à travers "
+        "l'isolant.</li></ul>", etiquettes=E_II, liste="Procédés et éléments", zones=["1", "2", "3", "4", "5", "6"]),
+]})
+
+# ------------------------------------------------------------ Partie 2 : calcul thermique
+PARTS_II.append({"title": "Calcul thermique : murs et ponts thermiques", "minutes": 15, "intro": [
+    "<p>La maison étudiée (DT1) a 140 m² de murs extérieurs, et son plancher d'étage les rejoint sur 32 m. Un pont "
+    "thermique de liaison se chiffre par son coefficient <b>ψ</b> (« psi »), en W/(m·K) : la déperdition des murs "
+    "devient <b>D = U × S + ψ × L</b>, avec L la longueur de la liaison.</p>"],
+    "blocks": [
+    QBAR(["DT1", "DT2"]),
+    Q("Calcule la résistance thermique totale du mur A, isolé par l'intérieur (DT1).", "R = e / λ pour chaque couche, "
+      "e en mètres ; une valeur et son unité.", NUM(4.0105, "m²·K/W", tol=0.01, rel=0), "4,01 m²·K/W",
+      "<p>" + calc("R = 0,01 / 0,25 + 0,12 / 0,032 + 0,20 / 0,95 + 0,01 / 1") + " "
+      + calc("R = 0,04 + 3,75 + 0,21 + 0,01 ≈ 4,01 m²·K/W") + "</p>"),
+    Q("Le mur B, isolé par l'extérieur, a les mêmes couches dans un autre ordre. A-t-il la même résistance "
+      "thermique ?", "Réponds par oui ou non.", OUI_NON(True), "Oui",
+      "<p><b>Oui</b> : les résistances des couches s'additionnent, et une somme ne dépend pas de l'ordre. En partie "
+      "courante, les murs A et B isolent autant ; ils diffèrent aux liaisons avec les planchers, et par la place de "
+      "leur masse (partie 5).</p>"),
+    Q("Calcule le coefficient de transfert thermique U de ces murs.", "Une valeur et son unité, au centième.",
+      NUM(0.2493, "W/(m²·K)", tol=0.004, rel=0), "0,25 W/(m²·K)",
+      "<p>" + calc("U = 1 / 4,01 ≈ 0,25 W/(m²·K)") + "</p>"),
+    GRP("Calcule la déperdition des murs de la maison, ponts thermiques compris, en ITI puis en ITE.",
+        "En W/K, au dixième ; ψ est donné dans le DT1.", [
+        ("Murs en partie courante : U × S (W/K)", VAL(34.9, 0.3), "34,9"),
+        ("Ponts thermiques en ITI : ψ × L (W/K)", VAL(22.4, 0.05), "22,4"),
+        ("Déperdition totale en ITI (W/K)", VAL(57.3, 0.4), "57,3"),
+        ("Ponts thermiques en ITE : ψ × L (W/K)", VAL(3.2, 0.05), "3,2"),
+        ("Déperdition totale en ITE (W/K)", VAL(38.1, 0.4), "38,1")],
+        "<ul><li>Murs : " + calc("0,249 × 140 ≈ 34,9 W/K") + ", les mêmes dans les deux cas.</li>"
+        "<li>ITI : " + calc("0,7 × 32 = 22,4 W/K") + " de ponts thermiques, soit " + calc("34,9 + 22,4 = 57,3 W/K")
+        + "</li><li>ITE : " + calc("0,1 × 32 = 3,2 W/K") + ", soit " + calc("34,9 + 3,2 = 38,1 W/K") + "</li></ul>"),
+    Q("En ITI, quelle part de la déperdition des murs passe par les ponts thermiques ?", "En %, à l'unité.",
+      VAL(39.1, 0.8), "Environ 39 %",
+      "<p>" + calc("22,4 ÷ 57,3 × 100 ≈ 39 %") + " Avec le même isolant, plus d'un tiers des pertes passe par les "
+      "liaisons avec le plancher : c'est ce que l'ITE supprime (moins de 9 % en ITE). En construction neuve, on peut "
+      "aussi les réduire en ITI avec des rupteurs de ponts thermiques.</p>"),
+]})
+
+# ------------------------------------------------------------ Partie 3 : trois climats
+PARTS_II.append({"title": "Trois régions, trois climats", "minutes": 15, "intro": [
+    "<p>La même maison est construite à Strasbourg, à Nantes et à Nice (DT3). Pour la suite, on retient <b>D = 57 W/K "
+    "en ITI</b> et <b>D = 38 W/K en ITE</b>. L'énergie perdue par les murs en un an vaut <b>E = D × DJU × 24 / 1 000</b>, "
+    "en kWh, où les degrés-jours unifiés (DJU) mesurent la rigueur de l'hiver.</p>"],
+    "blocks": [
+    QBAR(["DT3"]),
+    Q("Calcule l'énergie perdue en un an par les murs de la maison isolée par l'intérieur, à Strasbourg.",
+      "Une valeur et son unité.", NUM(4104, "kWh", tol=5, rel=0), "4 104 kWh",
+      "<p>" + calc("E = 57 × 3 000 × 24 / 1 000 = 4 104 kWh") + "</p>"),
+    GRP("Calcule, pour chaque ville, l'énergie économisée en un an en choisissant l'ITE plutôt que l'ITI.",
+        "E = (57 − 38) × DJU × 24 / 1 000 ; en kWh, à l'unité.", [
+        ("Strasbourg (kWh)", VAL(1368, 2), "1 368"), ("Nantes (kWh)", VAL(1003.2, 2), "1 003"),
+        ("Nice (kWh)", VAL(638.4, 2), "638")],
+        "<p>L'ITE fait gagner 57 − 38 = 19 W/K. " + calc("19 × 3 000 × 24 / 1 000 = 1 368 kWh") + " à Strasbourg, "
+        + calc("19 × 2 200 × 24 / 1 000 ≈ 1 003 kWh") + " à Nantes, " + calc("19 × 1 400 × 24 / 1 000 ≈ 638 kWh")
+        + " à Nice : plus l'hiver est rude, plus l'ITE rapporte.</p>"),
+    Q("Quelle part des pertes des murs l'ITE évite-t-elle, quelle que soit la ville ?", "En %, à l'unité.",
+      VAL(33.3, 0.6), "Environ 33 %",
+      "<p>" + calc("19 ÷ 57 × 100 ≈ 33 %") + " Le pourcentage est le même partout ; ce sont les kilowattheures, "
+      "donc les euros, qui changent avec le climat.</p>"),
+    GRP("Quelle est la priorité de l'isolation dans chaque région ?", "Une étiquette par case.", [
+        ("Strasbourg (zone H1)", KW(P("fort")), E_PRIORITE[0]),
+        ("Nantes (zone H2)", KW(P("doux")), E_PRIORITE[2]),
+        ("Nice (zone H3)", KW(P("inertie")), E_PRIORITE[1])],
+        "<ul><li><b>Strasbourg</b>, climat continental : l'hiver est long et froid ; on isole fort et on traite les "
+        "ponts thermiques.</li><li><b>Nantes</b>, climat océanique : hiver doux, été tempéré ; une bonne isolation "
+        "suffit, sans extrême à combattre.</li><li><b>Nice</b>, climat méditerranéen : l'enjeu est l'été ; on cherche "
+        "l'inertie, le déphasage et les protections solaires (brise-soleil, volets) pour éviter les surchauffes.</li>"
+        "</ul>", etiquettes=E_PRIORITE, liste="Priorités"),
+]})
+
+# ------------------------------------------------------------ Partie 4 : le déphasage
+PARTS_II.append({"title": "Le déphasage : confort d'été", "minutes": 20, "intro": [
+    "<p>En été, le soleil chauffe la façade et l'air extérieur atteint son maximum vers 15 h. Cette chaleur traverse "
+    "le mur lentement : le <b>déphasage</b> est le temps qu'elle met pour arriver à l'intérieur. Formule simple (DT2) : "
+    "<b>φ = 1,38 × e × √(ρ × c / (3 600 × λ))</b>, en heures, avec e en m, ρ la masse volumique en kg/m³, c la "
+    "capacité thermique massique en J/(kg·K) et λ en W/(m·K). Le déphasage d'un mur est, en première approximation, la "
+    "somme de ceux de ses couches.</p>"],
+    "blocks": [
+    QBAR(["DT1", "DT2"]),
+    GRP("Calcule, étape par étape, le déphasage de 16 cm de fibre de bois (mur C).", "Valeurs du DT2.", [
+        ("ρ × c / (3 600 × λ)", VAL(2333.3, 2), "2 333"),
+        ("√(ρ × c / (3 600 × λ))", VAL(48.30, 0.1), "48,3"),
+        ("Déphasage φ (h)", VAL(10.67, 0.1), "10,7")],
+        "<p>" + calc("160 × 2 100 / (3 600 × 0,040) = 336 000 / 144 ≈ 2 333") + " puis " + calc("√2 333 ≈ 48,3")
+        + " et " + calc("φ = 1,38 × 0,16 × 48,3 ≈ 10,7 h") + "</p>"),
+    Q("Calcule le déphasage de 12 cm de polystyrène expansé.", "Une valeur et son unité (h), au dixième.",
+      NUM(2.28, "h", accepte=("heures", "heure"), tol=0.06, rel=0), "Environ 2,3 h",
+      "<p>" + calc("15 × 1 450 / (3 600 × 0,032) ≈ 189") + " ; " + calc("φ = 1,38 × 0,12 × √189 ≈ 2,3 h") + " Très "
+      "léger, le polystyrène isole bien mais stocke très peu de chaleur : il retarde peu le flux.</p>"),
+    Q("Calcule le déphasage de 20 cm de parpaing creux.", "Une valeur et son unité (h), au dixième.",
+      NUM(4.84, "h", accepte=("heures", "heure"), tol=0.06, rel=0), "Environ 4,8 h",
+      "<p>" + calc("1 050 × 1 000 / (3 600 × 0,95) ≈ 307") + " ; " + calc("φ = 1,38 × 0,20 × √307 ≈ 4,8 h") + "</p>"),
+    GRP("Calcule le déphasage de chaque mur, en additionnant ceux de ses couches.", "En heures, au dixième ; les "
+        "couches de 1 cm (plâtre, enduit) sont négligées.", [
+        ("Mur C : ITE en fibre de bois (h)", VAL(15.5, 0.15), "15,5"),
+        ("Murs A et B : polystyrène, en ITI ou en ITE (h)", VAL(7.1, 0.15), "7,1")],
+        "<p>Mur C : " + calc("10,7 + 4,8 = 15,5 h") + " ; murs A et B : " + calc("2,3 + 4,8 = 7,1 h") + "</p>"),
+    Q("Dans ce calcul simple, le mur A (ITI) a-t-il le même déphasage que le mur B (ITE), isolés tous deux en "
+      "polystyrène ?", "Réponds par oui ou non.", OUI_NON(True), "Oui",
+      "<p><b>Oui</b> : la somme ne dépend pas de l'ordre des couches. Le calcul simple ne voit donc pas la différence "
+      "entre ITI et ITE ; elle tient à l'<b>inertie</b>, c'est-à-dire à la place de la masse (partie 5).</p>"),
+    GRP("La façade reçoit son maximum de chaleur vers 15 h. Quand ce pic arrive-t-il dans la pièce ?", "Ajoute le "
+        "déphasage du mur à 15 h.", [
+        ("Derrière le mur A ou B (polystyrène)", KW(P("soiree")), "En soirée, vers 22 h"),
+        ("Derrière le mur C (fibre de bois)", KW(P("matin")), "Au petit matin, vers 6 h 30")],
+        "<p>Murs A et B : 15 h + 7 h ≈ <b>22 h</b>, en soirée, quand l'air extérieur est encore chaud en été. Mur C : "
+        "15 h + 15,5 h ≈ <b>6 h 30</b> le lendemain matin, au moment le plus frais : on évacue cette chaleur en "
+        "ouvrant les fenêtres.</p>", etiquettes=E_HEURE, liste="Heures"),
+    Q("Quel isolant atteint, à lui seul, les 10 heures de déphasage recommandées (DT2) ?", "Un nom d'isolant.",
+      KW(P("fibre|bois")), "La fibre de bois",
+      "<p>La <b>fibre de bois</b> : à résistance voisine (R ≈ 4 m²·K/W), elle est dix fois plus lourde que le "
+      "polystyrène et stocke beaucoup plus de chaleur (c = 2 100 J/(kg·K)). Le déphasage compte surtout pour les "
+      "parois légères exposées au soleil : toitures, combles, murs à ossature bois.</p>"),
+]})
+
+# ------------------------------------------------------------ Partie 5 : inertie et occupation
+PARTS_II.append({"title": "Inertie thermique et occupation", "minutes": 10, "intro": [
+    "<p>L'<b>inertie thermique</b> est l'aptitude d'une maison à stocker la chaleur et à la restituer lentement. Elle "
+    "vient des matériaux lourds (parpaing, béton, brique, pierre) placés <b>du côté chauffé de l'isolant</b> : ils "
+    "lissent les variations de température, gardent la fraîcheur de la nuit en été, stockent les apports solaires "
+    "en hiver… mais demandent du temps et de l'énergie pour être réchauffés.</p>"],
+    "blocks": [
+    QBAR(["DT1", "DT3"]),
+    GRP("Où se trouve la masse du mur porteur ?", "Regarde la place de l'isolant (figure 1).", [
+        ("En ITI", KW(P("hors")), "Hors du volume chauffé, côté extérieur"),
+        ("En ITE", KW(P("dans")), "Dans le volume chauffé, côté intérieur")],
+        "<p>En ITI, l'isolant sépare la pièce du parpaing : la masse est <b>dehors</b>, à la température de "
+        "l'extérieur. En ITE, l'isolant enveloppe le parpaing : sa masse est <b>dedans</b>, à la température de la "
+        "maison.</p>", etiquettes=E_MASSE, liste="Place de la masse"),
+    GRP("Quelle est l'inertie thermique de la maison ?", "Une étiquette par case.", [
+        ("Isolée par l'intérieur", KW(P("faible")), "Faible"),
+        ("Isolée par l'extérieur", KW(P("forte")), "Forte")],
+        "<p>En ITI, seules les cloisons et la plaque de plâtre, légères, échangent avec l'air de la pièce : inertie "
+        "<b>faible</b>. En ITE, les 20 cm de parpaing participent : inertie <b>forte</b>.</p>",
+        etiquettes=E_INERTIE, liste="Inertie"),
+    Q("En ITE, faut-il réchauffer le mur porteur avant que la pièce devienne confortable ?", "Réponds par oui ou non.",
+      OUI_NON(True), "Oui",
+      "<p><b>Oui</b>. Après une longue absence en hiver, la masse s'est refroidie : il faut des heures, voire des "
+      "jours, et de l'énergie pour la réchauffer. En ITI, on ne chauffe que l'air et des parois légères : la pièce "
+      "est vite confortable, mais elle se refroidit aussi vite.</p>"),
+    GRP("Quel procédé conseiller dans chaque situation ?", "Une étiquette par case.", [
+        ("Résidence principale, occupée et chauffée toute l'année", ITE, "Isolation par l'extérieur (ITE)"),
+        ("Maison de week-end, chauffée deux jours par semaine en hiver", ITI, "Isolation par l'intérieur (ITI)"),
+        ("Maison à Nice, aux étés chauds", ITE, "Isolation par l'extérieur (ITE)"),
+        ("Studio de vacances, occupé quelques semaines par an", ITI, "Isolation par l'intérieur (ITI)")],
+        "<ul><li>Occupation <b>continue</b> : la forte inertie de l'ITE donne une température stable et stocke les "
+        "apports solaires ; en été, avec la ventilation de nuit, elle garde la maison fraîche (Nice).</li>"
+        "<li>Occupation <b>intermittente</b> : la faible inertie de l'ITI permet de chauffer vite à l'arrivée, sans "
+        "dépenser d'énergie à réchauffer des murs qu'on quittera dans deux jours.</li></ul>",
+        etiquettes=E_PROCEDE, liste="Procédés"),
+]})
+
+# ------------------------------------------------------------ Partie 6 : rénovation ou construction neuve
+PARTS_II.append({"title": "Rénovation ou construction neuve", "minutes": 10, "intro": [
+    "<p>En construction neuve, les deux procédés sont possibles et se décident sur plans. En rénovation, la maison "
+    "existe : sa façade, ses occupants et ses pièces imposent leurs contraintes (DT3).</p>"],
+    "blocks": [
+    QBAR(["DT3"]),
+    GRP("Ces avantages sont-ils ceux de l'ITI ou de l'ITE ?", "Une étiquette par case.", [
+        ("Ne réduit pas la surface habitable", ITE, "Atout de l'ITE"),
+        ("Les occupants restent chez eux pendant les travaux", ITE, "Atout de l'ITE"),
+        ("Supprime les ponts thermiques des planchers", ITE, "Atout de l'ITE"),
+        ("Moins coûteuse, réalisable pièce par pièce", ITI, "Atout de l'ITI"),
+        ("Ne change pas l'aspect de la façade", ITI, "Atout de l'ITI"),
+        ("La pièce chauffe vite après une absence", ITI, "Atout de l'ITI")],
+        "<p><b>ITE</b> : les travaux se font dehors, sans toucher aux pièces ni à leur surface, et l'isolant enveloppe "
+        "les planchers. <b>ITI</b> : moins chère, faisable pièce par pièce, elle laisse la façade intacte et donne une "
+        "maison vite chauffée ; mais elle prend de la place et laisse les ponts thermiques.</p>",
+        etiquettes=E_ATOUT, liste="Atouts"),
+    Q("En rénovation, quelle surface habitable un doublage intérieur de 14 cm fait-il perdre à la maison du DT3 ?",
+      "Longueur des murs extérieurs × épaisseur, en négligeant les angles ; une valeur et son unité.",
+      NUM(9.52, "m²", tol=0.05, rel=0), "9,52 m²",
+      "<p>Deux niveaux de 34 m de murs : " + calc("2 × 34 × 0,14 = 9,52 m²") + " La surface d'une petite chambre, "
+      "qui compte aussi dans le prix d'un logement.</p>"),
+    GRP("Quel procédé choisir dans chacun de ces cas ?", "Une étiquette par case.", [
+        ("Maison ancienne en pierre de taille, façade à préserver", ITI, "Isolation par l'intérieur (ITI)"),
+        ("Pavillon des années 1970 en parpaing, façade à ravaler, habité pendant les travaux", ITE,
+         "Isolation par l'extérieur (ITE)"),
+        ("Appartement en copropriété : un seul propriétaire isole son logement", ITI,
+         "Isolation par l'intérieur (ITI)"),
+        ("Maison neuve : supprimer les ponts thermiques des planchers", ITE, "Isolation par l'extérieur (ITE)")],
+        "<ul><li><b>Pierre de taille</b> : une façade de caractère ne se cache pas sous un isolant ; l'ITE y est souvent "
+        "refusée.</li><li><b>Pavillon à ravaler</b> : on profite du ravalement pour poser l'isolant, sans déménager ni "
+        "perdre de surface.</li><li><b>Copropriété</b> : la façade appartient à tous ; un propriétaire seul isole "
+        "par l'intérieur.</li><li><b>Maison neuve</b> : l'ITE supprime les ponts thermiques des planchers (l'ITI peut "
+        "les réduire avec des rupteurs).</li></ul>", etiquettes=E_PROCEDE, liste="Procédés"),
+]})
+
 # ============================================================ DOCUMENTS (dossiers de présentation et techniques)
 # (clé, titre, nature, dossier technique ?, contenu HTML) ; un exercice cite les clés de ses documents dans "docs".
 DOCS = [
@@ -1506,6 +1732,76 @@ DOCS = [
      "cellules de 0,5 V en série.</li><li>Pose : une bande libre de 0,50 m sur tout le pourtour du versant.</li>"
      "<li>Production : environ <b>1 000 kWh par kWc</b> installé et par an sur ce versant (hypothèse de l'étude)."
      "</li></ul></div>"),
+    # exercice 2.1 (affichés DT1 à DT3)
+    ("ii-DT1", "Les murs comparés et la maison", "Dossier technique", True,
+     '<div class="doc-text"><h3>Trois murs, de l\'intérieur vers l\'extérieur</h3><table class="t"><thead><tr>'
+     "<th>Mur</th><th>Couches</th><th>Procédé</th></tr></thead><tbody>"
+     "<tr><td><b>A</b></td><td>plaque de plâtre 1 cm · polystyrène expansé 12 cm · parpaing creux 20 cm · enduit 1 cm"
+     "</td><td>ITI</td></tr>"
+     "<tr><td><b>B</b></td><td>enduit de plâtre 1 cm · parpaing creux 20 cm · polystyrène expansé 12 cm · enduit 1 cm"
+     "</td><td>ITE</td></tr>"
+     "<tr><td><b>C</b></td><td>enduit de plâtre 1 cm · parpaing creux 20 cm · fibre de bois 16 cm · enduit 1 cm</td>"
+     "<td>ITE</td></tr></tbody></table>"
+     "<p>Conductivités λ en W/(m·K) : plâtre 0,25 ; polystyrène expansé 0,032 ; fibre de bois 0,040 ; parpaing creux "
+     "0,95 ; enduit 1 (DT2).</p>"
+     "<h3>La maison étudiée</h3><ul><li>Maison à étage, chauffée à 19 °C.</li><li>Murs extérieurs : <b>140 m²</b>, "
+     "baies déduites.</li><li>Liaison des murs avec le plancher de l'étage : <b>32 m</b> (le tour de la maison).</li>"
+     "</ul><h3>Le pont thermique de la liaison mur-plancher</h3><p>Il se chiffre par son coefficient <b>ψ</b> "
+     "(« psi »), en W/(m·K) : la puissance perdue par mètre de liaison et par degré d'écart entre l'intérieur et "
+     "l'extérieur. Valeurs indicatives :</p><ul><li>en ITI, sans rupteur de pont thermique : <b>ψ = 0,7 W/(m·K)</b> ;"
+     "</li><li>en ITE, l'isolant passant devant le plancher : <b>ψ = 0,1 W/(m·K)</b>.</li></ul>"
+     "<h3>Formules</h3><ul><li>R = e / λ pour chaque couche (e en m) ; R<sub>totale</sub> = R<sub>1</sub> + R<sub>2</sub> "
+     "+ … ; U = 1 / R<sub>totale</sub>.</li><li>Déperdition des murs, ponts thermiques compris : <b>D = U × S + ψ × L"
+     "</b>, en W/K, avec S la surface des murs (m²) et L la longueur de la liaison (m).</li></ul>"
+     + illustration("ch-fig03-isolation-interieure", "Isolation par laine de verre (mur, isolant, rails, plâtre) et "
+                    "isolation par placoplâtre (mur, point de colle, isolant, plâtre, bande à joint)", 600,
+                    "Figure 3 du cours — Isolation intérieure (ITI).")
+     + illustration("ch-fig04-isolation-exterieure", "Isolation extérieure enduite, isolation extérieure à bardage et "
+                    "toiture végétalisée, couche par couche", 600, "Figure 4 du cours — Isolation extérieure (ITE).")
+     + "</div>"),
+    ("ii-DT2", "Matériaux et déphasage", "Dossier technique", True,
+     '<div class="doc-text"><h3>Caractéristiques des matériaux (valeurs indicatives)</h3><table class="t"><thead><tr>'
+     "<th>Matériau</th><th>λ en W/(m·K)</th><th>ρ en kg/m³</th><th>c en J/(kg·K)</th></tr></thead><tbody>"
+     "<tr><td>Polystyrène expansé</td><td>0,032</td><td>15</td><td>1 450</td></tr>"
+     "<tr><td>Fibre de bois (panneaux rigides)</td><td>0,040</td><td>160</td><td>2 100</td></tr>"
+     "<tr><td>Parpaing creux</td><td>0,95</td><td>1 050</td><td>1 000</td></tr>"
+     "<tr><td>Plâtre</td><td>0,25</td><td colspan=\"2\">couche de 1 cm : déphasage négligé</td></tr>"
+     "<tr><td>Enduit</td><td>1</td><td colspan=\"2\">couche de 1 cm : déphasage négligé</td></tr></tbody></table>"
+     "<p>λ : conductivité thermique ; ρ : masse volumique ; c : capacité thermique massique, l'énergie qu'il faut pour "
+     "élever de 1 °C la température de 1 kg du matériau.</p>"
+     "<h3>Le déphasage</h3><p>Le déphasage φ est le temps que met la chaleur de l'heure la plus chaude pour traverser "
+     "une paroi. Calcul simple pour une couche :</p>"
+     '<div class="formule"><span class="f-main">φ = 1,38 × e × √(ρ × c / (3 600 × λ))</span><span class="f-units">'
+     "φ en heures (h), e en m, ρ en kg/m³, c en J/(kg·K), λ en W/(m·K)</span></div>"
+     "<p>Pour une paroi de plusieurs couches, on additionne, en première approximation, les déphasages des couches. "
+     "Ce calcul donne un ordre de grandeur : il ne dépend pas de l'ordre des couches, alors que le comportement réel "
+     "en dépend.</p>"
+     "<h3>Ce que l'on recherche en été</h3><ul><li>Un déphasage d'<b>au moins 8 h</b>, idéalement <b>10 à 12 h</b> : la "
+     "chaleur de l'après-midi arrive dans la nuit, quand on peut l'évacuer en aérant.</li><li>Il compte surtout pour "
+     "les parois légères exposées au soleil : toitures, combles, murs à ossature bois.</li></ul></div>"),
+    ("ii-DT3", "Climats, occupation et rénovation", "Dossier technique", True,
+     '<div class="doc-text"><h3>Trois villes, trois climats</h3><table class="t"><thead><tr><th>Ville</th>'
+     "<th>Zone climatique</th><th>Climat</th><th>DJU par an</th></tr></thead><tbody>"
+     "<tr><td>Strasbourg</td><td>H1</td><td>continental : hivers froids et longs, étés chauds</td><td>3 000</td></tr>"
+     "<tr><td>Nantes</td><td>H2</td><td>océanique : hivers doux et humides, étés tempérés</td><td>2 200</td></tr>"
+     "<tr><td>Nice</td><td>H3</td><td>méditerranéen : hivers doux, étés chauds et secs</td><td>1 400</td></tr>"
+     "</tbody></table><p>La réglementation découpe la France en trois zones climatiques : H1 (le nord et l'est, les "
+     "hivers les plus froids), H2 (l'ouest et le sud-ouest), H3 (le pourtour méditerranéen, les étés les plus "
+     "chauds).</p><p><b>DJU</b> (degrés-jours unifiés, valeurs arrondies) : chaque jour où la température moyenne "
+     "extérieure est sous 18 °C, on compte l'écart entre 18 °C et cette moyenne ; on additionne sur l'année. Plus il "
+     "y en a, plus l'hiver est rude. Énergie perdue en un an : <b>E = D × DJU × 24 / 1 000</b>, en kWh, avec D en "
+     "W/K.</p>"
+     "<h3>Occupation</h3><ul><li><b>Résidence principale</b> : occupée et chauffée en continu.</li><li><b>Résidence "
+     "secondaire, maison de week-end</b> : chauffée quelques jours ; à l'arrivée, il faut remonter vite la "
+     "température.</li></ul>"
+     "<h3>Rénovation : ce qu'il faut savoir</h3><ul><li><b>ITE</b> : elle change l'aspect de la façade "
+     "(déclaration préalable en mairie) ; elle est souvent refusée sur les façades à protéger (pierre de taille, "
+     "colombages, secteurs patrimoniaux) ; en copropriété, la façade est décidée par tous ; les travaux se font "
+     "depuis l'extérieur, sur échafaudage, et elle coûte plus cher.</li><li><b>ITI</b> : le doublage (10 à 15 cm) "
+     "réduit chaque pièce ; il faut vider les pièces, déplacer prises, radiateurs et plinthes ; les travaux se "
+     "font pièce par pièce et coûtent moins cher.</li></ul>"
+     "<h3>La maison à rénover</h3><p>Deux niveaux ; <b>34 m</b> de murs extérieurs à chaque niveau ; doublage "
+     "intérieur envisagé : <b>14 cm</b>.</p></div>"),
 ]
 
 
@@ -1549,6 +1845,18 @@ EXO_DEFS = [
      "sub": "Un questionnaire à choix multiples pour réviser tout le cours 1 : architecture bioclimatique, "
             "déperditions et isolation, renouvellement de l'air, chaleur d'origine renouvelable, maîtrise des "
             "consommations, production d'électricité. Idéal en mode examen."},
+    {"key": "iti-ite", "prefix": "e", "tag": "Exercice 2.1", "level": "Niveau 2",
+     "title": "ITI ou ITE : choisir son isolation", "parts": PARTS_II,
+     "docs": [("DT1", "ii-DT1"), ("DT2", "ii-DT2"), ("DT3", "ii-DT3")],
+     "consignes": CONSIGNES_MODES + CONSIGNES_SAISIE + CONSIGNES_ETIQUETTES + CONSIGNES_DOCS + CONSIGNES_BAREME,
+     "hero": ("ch-fig04-isolation-exterieure", "Isolation extérieure enduite et à bardage, couche par couche",
+              "Isoler par l'intérieur ou par l'extérieur : le même mur, deux comportements."),
+     "mots": ["ITI / ITE", "Ponts thermiques", "Déphasage", "Inertie", "Climats"], "vign": "carte-ex21",
+     "valt": "Un mur isolé par l'extérieur, couche par couche",
+     "sub": "Isoler par l'intérieur ou par l'extérieur ? Les deux procédés au droit d'un plancher, le calcul des "
+            "déperditions avec les ponts thermiques, l'énergie perdue dans trois climats français, le déphasage d'été, "
+            "l'inertie selon l'occupation (résidence principale ou de week-end), puis les choix en rénovation et en "
+            "construction neuve."},
     {"key": "etude-pavillon", "prefix": "d", "tag": "Étude 1", "level": "Niveau 2", "etude": True,
      "title": "Le pavillon face à la RE2020", "parts": PARTS_EP,
      "docs": ["DP1", "DT1", "DT2", "DT3", "DT4", ("DT5", "ep-DT5")],

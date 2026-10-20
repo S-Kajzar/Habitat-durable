@@ -70,4 +70,29 @@ module.exports = {
     // Partie 6 — bilan
     d6_1_1: "Atout", d6_1_2: "Point à améliorer", d6_1_3: "Atout", d6_1_4: "Atout", d6_1_5: "Point à améliorer",
   },
+  // Exercice 2.1 — ITI ou ITE : choisir son isolation (?ex=iti-ite)
+  "iti-ite": {
+    // Partie 1 — deux façons d'isoler le même mur
+    e1_1_1: "Isolation par l'intérieur (ITI)", e1_1_2: "Isolation par l'extérieur (ITE)", e1_1_3: "Pont thermique", e1_1_4: "Isolant",
+    e1_1_5: "Mur porteur", e1_1_6: "Plancher",
+    // Partie 2 — calcul thermique : murs et ponts thermiques
+    e2_1: "4,01 m²·K/W", e2_2: "Oui", e2_3: "0,25 W/(m²·K)",
+    e2_4_1: "34,9", e2_4_2: "22,4", e2_4_3: "57,3", e2_4_4: "3,2", e2_4_5: "38,1", e2_5: "39",
+    // Partie 3 — trois régions, trois climats
+    e3_1: "4 104 kWh", e3_2_1: "1368", e3_2_2: "1003", e3_2_3: "638", e3_3: "33",
+    e3_4_1: "Priorité à l'hiver : isoler fort, traiter les ponts thermiques",
+    e3_4_2: "Climat doux et tempéré toute l'année",
+    e3_4_3: "Priorité à l'été : inertie, déphasage, protections solaires",
+    // Partie 4 — le déphasage : confort d'été
+    e4_1_1: "2333", e4_1_2: "48,3", e4_1_3: "10,7", e4_2: "2,3 h", e4_3: "4,8 h", e4_4_1: "15,5", e4_4_2: "7,1",
+    e4_5: "Oui", e4_6_1: "En soirée, vers 22 h", e4_6_2: "Au petit matin, vers 6 h 30", e4_7: "La fibre de bois",
+    // Partie 5 — inertie thermique et occupation
+    e5_1_1: "Hors du volume chauffé, côté extérieur", e5_1_2: "Dans le volume chauffé, côté intérieur",
+    e5_2_1: "Faible", e5_2_2: "Forte", e5_3: "Oui",
+    e5_4_1: "Isolation par l'extérieur (ITE)", e5_4_2: "Isolation par l'intérieur (ITI)", e5_4_3: "Isolation par l'extérieur (ITE)", e5_4_4: "Isolation par l'intérieur (ITI)",
+    // Partie 6 — rénovation ou construction neuve
+    e6_1_1: "Atout de l'ITE", e6_1_2: "Atout de l'ITE", e6_1_3: "Atout de l'ITE", e6_1_4: "Atout de l'ITI",
+    e6_1_5: "Atout de l'ITI", e6_1_6: "Atout de l'ITI", e6_2: "9,52 m²",
+    e6_3_1: "Isolation par l'intérieur (ITI)", e6_3_2: "Isolation par l'extérieur (ITE)", e6_3_3: "Isolation par l'intérieur (ITI)", e6_3_4: "Isolation par l'extérieur (ITE)",
+  },
 };

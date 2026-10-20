@@ -12,6 +12,7 @@ depuis `index.html`. L'accueil présente les rubriques **Les cours**, **Les exer
 | `?ex=lecture-plan` | Exercice 1.1 — Lecture de plan : initiation (Niveau 1) : le dossier de plans d'un pavillon (perspective, façades, plans, coupe), 6 parties, 25 questions, 57 cases, 1 h, dont un schéma à compléter avec des étiquettes |
 | `?ex=isoler-paroi` | Exercice 1.2 — Isoler une paroi (Niveau 1) : le mur du même pavillon, couche par couche (isolants, coupe à compléter avec la courbe de température, R, U, D, puissance perdue, mur sans isolant, choix d'une épaisseur), 4 parties, 19 questions, 35 cases, 45 min |
 | `?ex=qcm-re2020` | QCM 1.3 — La maison RE2020 (Niveau 1) : révision de tout le cours 1, 6 parties, 46 questions dont 13 sur ses figures, 45 min |
+| `?ex=iti-ite` | Exercice 2.1 — ITI ou ITE : choisir son isolation (Niveau 2) : les deux procédés au droit d'un plancher (schéma à compléter), déperditions avec ponts thermiques, énergie perdue à Strasbourg, Nantes et Nice (DJU), déphasage d'été (formule simple), inertie et occupation (résidence principale ou de week-end), rénovation ou neuf ; 6 parties, 24 questions, 54 cases, 1 h 20 |
 | `?ex=etude-pavillon` | Étude 1 — Le pavillon face à la RE2020 (Niveau 2) : orientation, compacité, vitrages, pompe à chaleur ou granulés, photovoltaïque sur le toit, bilan ; 6 parties, 29 questions, 56 cases, 1 h 30 ; données et hypothèses dans son DT5 |
 
 Décisions et différences avec le dépôt d'origine : [`NOTE-DE-LIVRAISON.md`](NOTE-DE-LIVRAISON.md). Les exemples
@@ -81,9 +82,9 @@ ces parcours sont signalés « SKIP ».
 | Chemin | Rôle |
 |---|---|
 | `src/gabarit-exercice-interactif.html` | gabarit de référence (charte, moteurs de correction et d'application), repris du dépôt « Chaîne fonctionnelle » |
-| `src/generer.py` | contenu (exercices 1.1 et 1.2, QCM 1.3, étude 1, leurs documents), accueil, aiguillage et assemblage |
+| `src/generer.py` | contenu (exercices 1.1, 1.2 et 2.1, QCM 1.3, étude 1, leurs documents), accueil, aiguillage et assemblage |
 | `src/cours_habitat.py` | cours 1 : texte du Word, figures SVG, comportement et style (préfixe `hd-`) |
-| `src/plans.py` | schémas à compléter, redessinés en SVG avec leurs cases : la baie (exercice 1.1), le mur en coupe (exercice 1.2) |
+| `src/plans.py` | schémas à compléter, redessinés en SVG avec leurs cases : la baie (exercice 1.1), le mur en coupe (exercice 1.2), ITI et ITE au droit d'un plancher (exercice 2.1) |
 | `src/qcm.py` | QCM : questions à propositions, mises aux normes du gabarit |
 | `src/images/accueil.svg` | dessin de l'accueil (maison et leviers d'un habitat durable) |
 | `src/images/originaux/` | figures d'origine : cours Word (`ch-*`, photos `ch-ph-*`), dossier de plans du pavillon (`lp-*`) |
