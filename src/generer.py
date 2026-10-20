@@ -27,6 +27,7 @@ import struct
 import types
 import unicodedata
 
+import cours_habitat
 import qcm
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -546,6 +547,11 @@ EXO_DEFS = [
 # "Niveau 1", "title": …, "mots": […], "vign": "carte-cours-1", "alt": …, "render": fonction qui rend le cours
 # (HTML), et, s'il est interactif, "js" (script qui définit sa fonction d'initialisation), "init" (son nom), "css"}.
 COURS = [
+    {"key": "cours-habitat-durable", "tag": "Cours 1", "level": "Niveau 1", "title": "Habitat durable : maison performante",
+     "mots": ["Bioclimatique", "Isolation", "Ventilation", "Énergies renouvelables", "RE2020"], "vign": "carte-cours-1",
+     "alt": "Maison en coupe équipée d'une VMC double flux",
+     "render": lambda: cours_habitat.render(AIDES_COURS), "js": cours_habitat.hd_js(), "init": "initCoursHabitat",
+     "css": cours_habitat.HD_CSS},
 ]
 # Pages annexes (formulaire, fiches…) : {"rubrique": "ressources" ou "exercices", "tag", "title", "href", "bouton",
 # "mots", "vign", "alt"} ; la rubrique « Les ressources » n'apparaît que si elle a une carte.
