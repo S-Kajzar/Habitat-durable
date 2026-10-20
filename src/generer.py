@@ -1512,7 +1512,7 @@ DOCS = [
 # ============================================================ EXERCICES ET ÉTUDES (accueil et configuration)
 # Ajouter un exercice : décrire ses parties, puis l'ajouter ici ; "etude": True le range dans la rubrique « Études de
 # cas ». La carte apparaît d'elle-même sur l'accueil (et remplace l'annonce « En cours d'édition »). Modèle :
-#   {"key": "isolation-paroi", "prefix": "a", "tag": "Exercice 1.1", "level": "Niveau 1",
+#   {"key": "vitrage", "prefix": "e", "tag": "Exercice 1.4", "level": "Niveau 1",
 #    "title": "…", "sub": "phrase de présentation", "parts": [{"title": …, "minutes": …, "intro": […], "blocks": […]}],
 #    "docs": ["DP1"], "consignes": CONSIGNES_MODES + CONSIGNES_SAISIE + CONSIGNES_DOCS + CONSIGNES_BAREME,
 #    "hero": ("image", "texte alternatif", "légende"), "mots": [3 à 5 mots-clés], "vign": "carte-…", "valt": "…"}
