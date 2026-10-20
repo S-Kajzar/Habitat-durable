@@ -925,6 +925,239 @@ PARTS_IP.append({"title": "Comparer et choisir", "minutes": 10, "intro": [
       "l'isolant la protège du froid : chaque matériau a son rôle.</p>"),
 ]})
 
+# ============================================================ QCM 1.3 — LA MAISON RE2020
+# Révision de tout le cours 1, partie par partie ; les figures sont celles du cours (écrites une fois dans la page).
+F_ITE = ("ch-fig04-isolation-exterieure", "Isolation extérieure enduite, isolation extérieure à bardage et toiture "
+         "végétalisée, couche par couche", 620)
+F_ETANCHE = ("ch-test-etancheite", "Test d'étanchéité : une porte soufflante munie d'un ventilateur et d'un capteur "
+             "est posée dans l'encadrement de la porte d'entrée", 340)
+F_VMC_SF = ("ch-fig07-vmc-simple-flux", "VMC simple flux : l'air neuf entre par les fenêtres du séjour et des "
+            "chambres, l'air vicié est aspiré dans la cuisine, la salle de bains et les WC", 520)
+F_VMC_DF = ("ch-fig08-vmc-double-flux", "VMC double flux : un caisson avec échangeur aspire l'air vicié et insuffle "
+            "l'air neuf réchauffé dans les pièces principales", 520)
+F_PUITS = ("ch-fig09-puits-canadien", "Puits canadien : bouche d'entrée d'air neuf avec filtre, conduit enterré de 1,5 "
+           "à 3 m, couplé à la ventilation", 560)
+F_SSC = ("ch-fig10-solaire-combine", "Système solaire combiné : capteurs solaires thermiques, groupe de transfert, "
+         "ballon tampon avec ballon d'eau chaude sanitaire intégré, chauffage par radiateurs ou plancher chauffant", 520)
+F_CET = ("ch-chauffe-eau-thermo", "Chauffe-eau thermodynamique : ventilateur, évaporateur, compresseur, condenseur, "
+         "détendeur, chauffage d'appoint ; air aspiré, air rejeté", 340)
+F_BOIS = ("ch-fig13-combustibles", "Énergie fournie par type de combustible : bûches, plaquettes, écorces, granulés, "
+          "fioul", 520)
+F_PROG = ("ch-fig16-programmateur", "Programmateur : capteurs de température, consigne, programmation ; il commande "
+          "les émetteurs de chaleur par TOR, radio, fil pilote ou CPL", 620)
+F_DOMO = ("ch-fig17-domotique", "Fonctions de la domotique : contrôle de l'énergie, confort de vie, protection du "
+          "domicile, protection de la personne, interaction à distance", 460)
+F_PV = ("ch-fig18-photovoltaique", "Le rayonnement solaire arrive sur un module photovoltaïque, qui produit de "
+        "l'électricité pour une lampe", 520)
+F_ISOLE = ("ch-fig19-site-isole", "Site isolé : modules PV, régulateur de charge, accumulateur, onduleur ; récepteur "
+           "DC et récepteur AC", 560)
+F_RESEAU = ("ch-fig20-reseau", "Installation couplée au réseau : modules PV, onduleur, compteurs de production et de "
+            "non-consommation, compteur de consommation, réseau", 620)
+
+PARTS_QCM = [
+    qcm.partie("Architecture bioclimatique", 6, [
+        qcm.QCM("Depuis quand les maisons neuves doivent-elles respecter la réglementation environnementale RE2020 ?",
+                ["Depuis le 1er janvier 2012", "Depuis le 1er janvier 2022", "À partir du 1er janvier 2030"], "b",
+                "La RE2020 s'applique aux maisons neuves depuis le 1er janvier 2022 ; elle a remplacé la RT2012."),
+        qcm.QCM("Dans une maison bioclimatique, de quel côté place-t-on les pièces de vie (séjour, salle à manger) ?",
+                ["Au nord", "Au sud", "À l'est", "À l'ouest"], "b",
+                "Au sud, les pièces de vie, largement vitrées, profitent de la lumière naturelle et des apports solaires."),
+        qcm.QCM("Quels locaux peuvent servir d'espaces tampons au nord de la maison ?",
+                ["Le garage", "Le cellier", "Le salon séjour", "Le couloir", "La chambre"], ["a", "b", "d"],
+                "Les pièces peu chauffées (garage, cellier, couloir…) placées au nord protègent les pièces chauffées du "
+                "froid : elles renforcent l'isolation."),
+        qcm.QCM("Comment est conçue la façade nord d'une maison bioclimatique ?",
+                ["Avec de grandes baies vitrées, pour l'éclairage", "Protégée des vents dominants, avec peu d'ouvertures",
+                 "Avec les chambres, pour la fraîcheur"], "b",
+                "La façade nord, qui ne reçoit pas de soleil, est protégée des vents dominants ; elle a peu d'ouvertures "
+                "et donne sur des espaces tampons."),
+        qcm.QCM("Pourquoi place-t-on de préférence les chambres à l'est ?",
+                ["Pour le soleil du matin et la fraîcheur du soir", "Pour le soleil couchant",
+                 "Parce que l'est ne reçoit jamais de soleil"], "a",
+                "À l'est, les chambres reçoivent le soleil du matin et restent fraîches le soir, au coucher."),
+        qcm.QCM("À quoi servent les brise-soleil placés au-dessus des baies du sud ?",
+                ["À éviter les surchauffes en été", "À capter davantage de soleil en hiver",
+                 "À protéger la maison des vents du nord"], "a",
+                "En été, le soleil de midi est haut (environ 67°) : le brise-soleil arrête ses rayons. En hiver, il est "
+                "bas (environ 21°) : ses rayons passent dessous et entrent loin dans la pièce."),
+    ]),
+    qcm.partie("Déperditions et isolation", 10, [
+        qcm.QCM("D'après la figure 2 du cours, quelle part des déperditions d'une maison passe par la toiture ?",
+                ["Environ 10 %", "Environ 15 %", "Environ 30 %", "Environ 50 %"], "c",
+                "Toiture et murs (avec les ponts thermiques) : environ 30 % chacun ; air renouvelé 20 %, fenêtres 15 %, "
+                "plancher bas 10 %. L'air chaud monte : la toiture est la première paroi à isoler."),
+        qcm.QCM("Pour une même surface habitable, quelle maison est la plus compacte ?",
+                ["La maison de plain-pied", "La maison à étage", "Elles sont aussi compactes l'une que l'autre"], "b",
+                "À surface égale, la maison à étage a deux fois moins de toiture et de plancher bas : moins de parois "
+                "déperditives pour le même volume chauffé, donc un facteur C = Sp / V plus faible."),
+        qcm.QCM("Une maison a 300 m² de parois déperditives pour 250 m³ chauffés. Son facteur de compacité C vaut :",
+                ["0,83 m²/m³", "1,2 m²/m³", "550 m²/m³"], "b", "C = Sp / V = 300 / 250 = 1,2 m²/m³."),
+        qcm.QCM("Lequel de ces matériaux est le plus isolant ?",
+                ["Parpaing (λ = 0,95 W/(m·K))", "Brique Monomur (λ = 0,13 W/(m·K))", "Terre crue (λ = 0,6 à 1 W/(m·K))",
+                 "Polystyrène expansé (λ = 0,032 W/(m·K))"], "d",
+                "Plus la conductivité thermique λ est faible, plus le matériau est isolant."),
+        qcm.QCM("Une plaque d'isolant de 5 cm a une conductivité λ = 0,04 W/(m·K). Sa résistance thermique R vaut :",
+                ["0,8 m²·K/W", "1,25 m²·K/W", "2 m²·K/W", "125 m²·K/W"], "b",
+                "R = e / λ = 0,05 / 0,04 = 1,25 m²·K/W, l'épaisseur étant en mètres : avec e en centimètres, on "
+                "trouverait 125, cent fois trop."),
+        qcm.QCM("Une paroi a trois couches de résistances 0,05 ; 2,50 et 0,20 m²·K/W. Sa résistance totale vaut :",
+                ["0,92 m²·K/W", "2,50 m²·K/W", "2,75 m²·K/W"], "c",
+                "Les résistances des couches s'additionnent : 0,05 + 2,50 + 0,20 = 2,75 m²·K/W."),
+        qcm.QCM("Un mur de 40 m² a un coefficient U = 0,25 W/(m²·K). Sa déperdition thermique D vaut :",
+                ["0,006 W/K", "10 W/K", "160 W/K"], "b", "D = U × S = 0,25 × 40 = 10 W/K."),
+        qcm.QCM("Quel est l'avantage principal de l'isolation par l'extérieur, montrée sur ces exemples ?",
+                ["Elle supprime les ponts thermiques", "Elle est la plus simple et la plus rapide à poser",
+                 "Elle se pose sans toucher aux façades"], "a",
+                "L'isolant enveloppe tout le mur, jonctions avec les planchers comprises : l'isolation n'est plus "
+                "interrompue, les ponts thermiques disparaissent. C'est l'isolation intérieure qui est la plus simple à "
+                "mettre en œuvre.", img=F_ITE),
+        qcm.QCM("Quel vitrage a le coefficient de transfert thermique Uw le plus faible ?",
+                ["Simple vitrage", "Double vitrage standard", "Double vitrage performant (VIR, argon)",
+                 "Triple vitrage (argon)"], "d",
+                "Uw vaut environ 5 pour le simple vitrage, 3 pour le double standard, 1,5 pour le double VIR et 0,7 "
+                "W/(m²·K) pour le triple vitrage : plus Uw est faible, moins la fenêtre perd de chaleur."),
+        qcm.QCM("Quelle surface vitrée recommande-t-on pour une maison ?",
+                ["5 à 8 % de la surface habitable", "16 à 18 % de la surface habitable",
+                 "30 à 35 % de la surface habitable"], "b",
+                "16 à 18 % de la surface habitable, réparties à 50 % au sud, 20 à 30 % à l'est, 20 % à l'ouest et 0 à "
+                "10 % au nord."),
+        qcm.QCM("Dans les 123 logements testés, quel est le premier point faible de l'étanchéité à l'air ?",
+                ["Les menuiseries extérieures", "Les trappes", "La structure du bâtiment"], "a",
+                "Menuiseries extérieures 41 %, passages des équipements électriques 38 %, trappes 12 %, tuyauteries "
+                "7 %, structure du bâtiment 2 %.", img=F_ETANCHE),
+    ]),
+    qcm.partie("Renouveler l'air", 7, [
+        qcm.QCM("Pourquoi faut-il ventiler une maison bien isolée et étanche à l'air ?",
+                ["Pour apporter l'air neuf et l'oxygène dont nous avons besoin",
+                 "Pour éliminer l'humidité et les pollutions intérieures",
+                 "Pour apporter l'oxygène nécessaire aux appareils à combustion", "Pour refroidir les murs en hiver"],
+                ["a", "b", "c"],
+                "Une maison étanche ne renouvelle plus son air par ses fuites : la ventilation apporte l'oxygène, "
+                "évacue l'humidité et les polluants, et alimente les appareils à combustion."),
+        qcm.QCM("Dans une VMC simple flux, d'où l'air vicié est-il extrait ?",
+                ["Des pièces principales (séjour, chambres)", "Des pièces de service (cuisine, salle de bains, WC)",
+                 "Du garage"], "b",
+                "Les bouches d'extraction sont dans les pièces de service, où naissent l'humidité et les odeurs.",
+                img=F_VMC_SF),
+        qcm.QCM("Dans une VMC simple flux, par où l'air neuf entre-t-il ?",
+                ["Par des entrées d'air au-dessus des fenêtres des pièces principales",
+                 "Par les bouches d'extraction de la cuisine", "Par un échangeur placé dans les combles"], "a",
+                "L'air neuf entre par les ouvertures au-dessus des fenêtres du séjour et des chambres, traverse la "
+                "maison et sort par les pièces de service."),
+        qcm.QCM("Qu'est-ce que la VMC double flux ajoute à la VMC simple flux ?",
+                ["Un échangeur, qui réchauffe l'air neuf avec la chaleur de l'air extrait",
+                 "L'extraction de l'air vicié dans les pièces de service", "Des entrées d'air au-dessus des fenêtres"],
+                "a",
+                "Les deux VMC extraient l'air vicié des pièces de service. La double flux aspire aussi l'air neuf "
+                "dehors et le réchauffe dans un échangeur avant de l'insuffler dans les pièces principales : il n'y a "
+                "plus d'entrées d'air aux fenêtres.", img=F_VMC_DF),
+        qcm.QCM("Pourquoi laisse-t-on un espace sous les portes intérieures ?",
+                ["Pour que l'air circule des pièces principales vers les pièces de service",
+                 "Pour faire passer les câbles électriques", "Pour éviter que les portes frottent sur le parquet"], "a",
+                "L'air neuf entre dans les pièces principales et doit rejoindre les bouches d'extraction des pièces de "
+                "service : il passe sous les portes."),
+        qcm.QCM("À 1,5 à 3 m de profondeur, quelle est la température du sol, quelle que soit la saison ?",
+                ["Entre 0 et 2 °C", "Entre 12 et 14 °C", "Entre 25 et 30 °C"], "b",
+                "Le sol garde 12 à 14 °C toute l'année : c'est ce qu'utilise le puits canadien.", img=F_PUITS),
+        qcm.QCM("En été, que devient l'air qui traverse le puits canadien ?",
+                ["Il est refroidi, car le sol est plus froid que l'air extérieur", "Il est réchauffé",
+                 "Il garde la même température"], "a",
+                "L'été, le sol est plus froid que l'air extérieur : l'air se rafraîchit dans le conduit. L'hiver, c'est "
+                "l'inverse : il se réchauffe."),
+    ]),
+    qcm.partie("Chaleur d'origine renouvelable", 8, [
+        qcm.QCM("Dans un système solaire combiné, que chauffent les capteurs solaires thermiques ?",
+                ["Un fluide caloporteur, qui chauffe l'eau sanitaire et l'eau du chauffage",
+                 "L'air des combles", "Rien : ils produisent de l'électricité"], "a",
+                "Le rayonnement solaire chauffe un fluide caloporteur ; il cède sa chaleur au ballon tampon, qui "
+                "alimente l'eau chaude sanitaire et le chauffage central.", img=F_SSC),
+        qcm.QCM("Où une pompe à chaleur peut-elle capter des calories ?",
+                ["Dans l'air", "Dans le sol", "Dans l'eau", "Dans le fioul"], ["a", "b", "c"],
+                "Une PAC capte les calories de l'air (aérothermie), du sol ou de l'eau (géothermie) : elle ne brûle "
+                "aucun combustible."),
+        qcm.QCM("Dans quel élément de la pompe à chaleur le fluide frigorigène se vaporise-t-il, chauffé par l'air, "
+                "l'eau ou le sol ?", ["L'évaporateur", "Le compresseur", "Le condenseur", "Le détendeur"], "a",
+                "1 : il se vaporise dans l'évaporateur ; 2 : le compresseur élève sa température ; 3 : il cède sa "
+                "chaleur dans le condenseur et redevient liquide ; 4 : le détendeur abaisse sa pression."),
+        qcm.QCM("Une pompe à chaleur de COP 2,5 consomme 2 000 kWh d'électricité dans l'année. Quelle chaleur "
+                "fournit-elle ?", ["800 kWh", "2 500 kWh", "5 000 kWh"], "c",
+                "COP = W thermique produite / W électrique consommée, donc W thermique = 2,5 × 2 000 = 5 000 kWh."),
+        qcm.QCM("Comment le chauffe-eau thermodynamique chauffe-t-il l'eau sanitaire ?",
+                ["Avec une pompe à chaleur intégrée, qui récupère les calories de l'air",
+                 "Avec une chaudière au gaz", "Avec des capteurs solaires posés sur le toit"], "a",
+                "Sa pompe à chaleur intégrée puise les calories de l'air (du local, de l'extérieur ou de la VMC) ; la "
+                "RE2020 le préfère au chauffe-eau électrique classique.", img=F_CET),
+        qcm.QCM("D'après la figure 13 du cours, 1 000 kWh de chaleur correspondent à environ :",
+                ["22 kg de granulés", "220 kg de granulés", "2 200 kg de granulés"], "b",
+                "1 000 kWh = 3/4 de stère de bûches = 1 m³ apparent de plaquettes = 500 kg d'écorces = 220 kg de "
+                "granulés = 100 litres de fioul.", img=F_BOIS),
+        qcm.QCM("Quelles chaudières sont abandonnées dans la RE2020 ?",
+                ["La chaudière fioul", "La chaudière gaz", "La chaudière à granulés de bois"], ["a", "b"],
+                "Les chaudières fioul et gaz brûlent des énergies fossiles : la RE2020 les abandonne. Le bois issu de "
+                "forêts gérées durablement est une énergie renouvelable."),
+        qcm.QCM("Dans le chauffage central, qu'est-ce qu'un plancher chauffant ?",
+                ["Un émetteur de chaleur", "Un générateur de chaleur", "Un moyen de transport de l'eau chaude"], "a",
+                "Énergie (bois, soleil, air) → générateur (chaudière, ballon tampon) → transport (tuyaux en cuivre ou en "
+                "PER) → émetteurs (radiateurs, chauffage au sol)."),
+    ]),
+    qcm.partie("Limiter la consommation", 6, [
+        qcm.QCM("Quelle température réduite conseille-t-on en l'absence des occupants ?", ["12 °C", "16 °C", "19 °C"],
+                "b", "Température de confort de l'ordre de 19 °C en présence des occupants, température réduite de "
+                "l'ordre de 16 °C en leur absence."),
+        qcm.QCM("Par quelles liaisons un programmateur peut-il commander les émetteurs de chaleur ?",
+                ["Le fil pilote", "Une liaison radio", "Le courant porteur en ligne (CPL)", "Un tuyau en cuivre"],
+                ["a", "b", "c"],
+                "Le programmateur envoie ses ordres par TOR, radio, fil pilote ou CPL ; les tuyaux transportent l'eau "
+                "chaude, pas les informations.", img=F_PROG),
+        qcm.QCM("Dans un couloir où l'on ne fait que passer, quelle solution limite la consommation d'éclairage ?",
+                ["La détection de présence", "La détection crépusculaire", "Un éclairage permanent à LED"], "a",
+                "La détection de présence n'allume la lumière que lorsque quelqu'un passe."),
+        qcm.QCM("À quoi sert un puits de lumière ?",
+                ["À amener la lumière naturelle dans les zones sombres de la maison",
+                 "À allumer l'éclairage à la tombée de la nuit", "À produire de l'électricité"], "a",
+                "Un tube réfléchissant traverse la toiture et conduit la lumière du jour jusqu'à une pièce sans "
+                "fenêtre."),
+        qcm.QCM("Parmi ces technologies domotiques, laquelle est filaire ?", ["Bus KNX", "Zigbee", "Z-Wave", "Wi-Fi"],
+                "a", "Filaires : bus KNX, Ethernet domestique, Legrand MyHome. Sans fil : Z-Wave, Zigbee, infrarouge, "
+                "Wi-Fi."),
+        qcm.QCM("Pour commander sa maison depuis un smartphone, à quoi la box domotique est-elle raccordée ?",
+                ["À la box Internet", "Au compteur électrique", "À la VMC"], "a",
+                "Raccordée à la box Internet, la box domotique communique avec l'extérieur : c'est l'interaction à "
+                "distance.", img=F_DOMO),
+    ]),
+    qcm.partie("Produire de l'énergie", 8, [
+        qcm.QCM("Qu'est-ce qu'une maison à énergie positive (Bepos) ?",
+                ["Une maison qui produit plus d'énergie qu'elle n'en consomme", "Une maison qui ne consomme aucune "
+                 "énergie", "Une maison chauffée uniquement au bois"], "a",
+                "Elle produit plus d'énergie qu'elle n'en consomme, le plus souvent grâce au soleil et au vent."),
+        qcm.QCM("Que transforme une cellule photovoltaïque ?",
+                ["Le rayonnement solaire en électricité", "La chaleur du soleil en eau chaude",
+                 "Le vent en électricité"], "a",
+                "La cellule, en silicium, transforme le rayonnement solaire en courant électrique continu.", img=F_PV),
+        qcm.QCM("Un module photovoltaïque compte 60 cellules en série. Sa tension vaut environ :",
+                ["0,5 V", "30 V", "60 V", "120 V"], "b",
+                "Chaque cellule fournit environ 0,5 V ; la mise en série additionne les tensions : 60 × 0,5 = 30 V."),
+        qcm.QCM("Que permet la mise en parallèle de plusieurs chaînes de modules ?",
+                ["D'augmenter le courant fourni", "D'augmenter la tension", "De stocker l'énergie"], "a",
+                "En série, les tensions s'additionnent ; en parallèle, ce sont les courants."),
+        qcm.QCM("Dans une installation sur site isolé, quel élément stocke l'énergie pour la nuit ?",
+                ["Les accumulateurs (batteries)", "L'onduleur", "Le régulateur de charge"], "a",
+                "Les accumulateurs se chargent le jour ; le régulateur gère leur charge et les protège ; l'onduleur "
+                "transforme le continu en alternatif.", img=F_ISOLE),
+        qcm.QCM("Une toiture porte 20 m² de modules photovoltaïques. Sa puissance crête vaut environ :",
+                ["200 Wc", "2 kWc", "20 kWc"], "b",
+                "En première approximation, 1 m² de module produit 100 Wc : 20 × 100 = 2 000 Wc, soit 2 kWc."),
+        qcm.QCM("Dans une installation couplée au réseau, quel appareil compte l'énergie injectée dans le réseau ?",
+                ["Le compteur de production", "Le compteur de consommation", "L'onduleur"], "a",
+                "Le compteur de production comptabilise l'énergie vendue ; l'onduleur convertit le courant continu en "
+                "alternatif, identique à celui du réseau.", img=F_RESEAU),
+        qcm.QCM("Au-delà de quelle hauteur de mât une éolienne domestique exige-t-elle un permis de construire ?",
+                ["6 m", "12 m", "20 m"], "b",
+                "Le permis est exigé à partir de 12 m, alors qu'un bon mât devrait mesurer au moins 20 m : beaucoup "
+                "d'éoliennes ont un mât trop court pour être rentables."),
+    ]),
+]
+
 # ============================================================ DOCUMENTS (dossiers de présentation et techniques)
 # (clé, titre, nature, dossier technique ?, contenu HTML) ; un exercice cite les clés de ses documents dans "docs".
 DOCS = [
@@ -1054,6 +1287,16 @@ EXO_DEFS = [
      "sub": "Le mur du pavillon de l'exercice 1.1, couche par couche : reconnaître les isolants, nommer les couches "
             "sur une coupe, calculer les résistances, le coefficient U et la déperdition, puis comparer avec un mur "
             "sans isolant et choisir une épaisseur d'isolant."},
+    {"key": "qcm-re2020", "prefix": "c", "tag": "QCM 1.3", "level": "Niveau 1", "qcm": True,
+     "title": "La maison RE2020", "parts": PARTS_QCM, "docs": [], "consignes": qcm.CONSIGNES,
+     "hero": ("ch-fig10-solaire-combine", "Système solaire combiné : capteurs solaires, ballon tampon, eau chaude "
+              "sanitaire et chauffage", "Bioclimatique, isolation, ventilation, chaleur renouvelable, consommation, "
+              "production : tout le cours 1."),
+     "mots": ["Révision", "Bioclimatique", "Isolation", "Énergies renouvelables"], "vign": "carte-qcm",
+     "valt": "Capteurs solaires thermiques et ballon tampon",
+     "sub": "Un questionnaire à choix multiples pour réviser tout le cours 1 : architecture bioclimatique, "
+            "déperditions et isolation, renouvellement de l'air, chaleur d'origine renouvelable, maîtrise des "
+            "consommations, production d'électricité. Idéal en mode examen."},
 ]
 
 

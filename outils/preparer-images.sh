@@ -48,6 +48,7 @@ remplir "$SRC/lp-perspective.png"          carte-ex11.png    "-colors 256"     #
 # exercice 1.2 : la moitié gauche de la figure 3 du cours (isolation intérieure par laine de verre)
 convert "$SRC/ch-fig03-isolation-interieure.png" -crop 50%x100%+0+0 +repage "$OUT/carte-ex12-src.png"
 remplir "$OUT/carte-ex12-src.png" carte-ex12.jpg "-quality 82" && rm "$OUT/carte-ex12-src.png"
+remplir "$SRC/ch-fig10-solaire-combine.png" carte-qcm.jpg "-quality 82"       # QCM 1.3 : système solaire combiné
 
 images=("$OUT"/*.png "$OUT"/*.jpg)
 if [ ${#images[@]} -gt 0 ]; then
