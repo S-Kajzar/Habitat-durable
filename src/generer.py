@@ -775,6 +775,156 @@ PARTS_LP.append({"title": "Le pavillon est-il bioclimatique ?", "minutes": 5, "i
 ]})
 
 
+# ============================================================ EXERCICE 1.2 — ISOLER UNE PAROI
+# La partie 2 du cours (conductivité, résistance, coefficient U, déperdition) appliquée au mur de la partie habitation
+# du pavillon de l'exercice 1.1. Composition du mur (hypothèse, DT2) : 1 + 10 + 20 + 1 = 32 cm, la cote du plan.
+E_ISOLANT = ["Isolant", "Non isolant"]
+E_RANG = ["Polystyrène expansé", "Laine de bois", "Ossature bois", "Parpaing creux"]
+E_PAROI = ["Intérieur : pièce chauffée", "Plaque de plâtre", "Polystyrène expansé", "Parpaing creux", "Enduit",
+           "Extérieur : air froid", "Laine de bois", "Pare-vapeur", "Lame d'air"]
+E_PROCEDE = ["Isolation par l'intérieur (ITI)", "Isolation par l'extérieur (ITE)"]
+ISOLANT, NON_ISOLANT = KW(P("isolant"), forbid="non"), KW(P("non"))
+
+
+def EPAIS(v, tol=1e-6):
+    """Une épaisseur en centimètres, juste aussi en mètres ou en millimètres (unité alors obligatoire)."""
+    return NUM(v, "cm", variantes=[(v / 100, "m"), (v * 10, "mm")], tol=tol, rel=0)
+
+
+PARTS_IP = []
+
+# ------------------------------------------------------------ Partie 1 : les matériaux
+PARTS_IP.append({"title": "Les matériaux du mur", "minutes": 10, "intro": [
+    "<p>Chaque matériau conduit plus ou moins bien la chaleur : c'est sa <b>conductivité thermique λ</b>, en "
+    "W/(m·K). Plus λ est faible, plus le matériau est isolant. Les fiches matériaux (DT1) donnent λ pour les "
+    "matériaux du cours.</p>"],
+    "blocks": [
+    QBAR(["DT1"]),
+    GRP("Ce matériau est-il un isolant thermique ?", "Un matériau est appelé isolant thermique quand sa conductivité est "
+        "inférieure à 0,065 W/(m·K) (DT1).", [
+        ("Parpaing creux", NON_ISOLANT, "Non isolant"), ("Polystyrène expansé", ISOLANT, "Isolant"),
+        ("Brique Monomur", NON_ISOLANT, "Non isolant"), ("Laine de bois", ISOLANT, "Isolant"),
+        ("Plaque de plâtre", NON_ISOLANT, "Non isolant"), ("Laine de verre", ISOLANT, "Isolant")],
+        "<p>Seuls le polystyrène expansé (λ = 0,032), la laine de verre (0,035) et la laine de bois (0,038) sont sous "
+        "0,065 W/(m·K) : ce sont des <b>isolants</b>. La brique Monomur (0,13) isole sept fois mieux que le parpaing "
+        "(0,95), mais elle reste un matériau de <b>structure</b> : elle porte la maison, sans être un isolant. La plaque "
+        "de plâtre (0,25) sert de parement.</p>", etiquettes=E_ISOLANT, liste="Isolant ?"),
+    GRP("Range ces quatre matériaux, du plus isolant au moins isolant : polystyrène expansé, laine de bois, ossature "
+        "bois, parpaing creux.", "Compare leurs conductivités λ (DT1).", [
+        ("1<sup>er</sup> : le plus isolant", KW(P("polystyrene")), "Polystyrène expansé"),
+        ("2<sup>e</sup>", KW(P("laine", "bois")), "Laine de bois"),
+        ("3<sup>e</sup>", KW(P("ossature")), "Ossature bois"),
+        ("4<sup>e</sup> : le moins isolant", KW(P("parpaing")), "Parpaing creux")],
+        "<p>Plus λ est faible, plus le matériau est isolant : polystyrène expansé (0,032) &lt; laine de bois (0,038) "
+        "&lt; ossature bois (0,12) &lt; parpaing creux (0,95).</p>", etiquettes=E_RANG, liste="Matériaux"),
+    Q("Combien de fois le parpaing creux conduit-il mieux la chaleur que le polystyrène expansé ?",
+      "Rapport des deux conductivités, arrondi à l'unité.", NUM(29.7, tol=0.8, rel=0), "Environ 30 fois",
+      "<p>" + calc("0,95 ÷ 0,032 ≈ 29,7") + " Le parpaing conduit la chaleur environ <b>30 fois</b> mieux que le "
+      "polystyrène : il porte la maison, l'isolant la protège du froid.</p>"),
+]})
+
+# ------------------------------------------------------------ Partie 2 : la paroi en coupe
+PARTS_IP.append({"title": "Le mur en coupe", "minutes": 10, "intro": [
+    "<p>Le mur de la partie habitation du pavillon mesure 32 cm sur le plan (DT3). Le DT2 donne sa composition, de "
+    "l'intérieur vers l'extérieur. La figure 1 le montre en coupe horizontale, vu de dessus, avec l'allure de la "
+    "température dans son épaisseur.</p>"],
+    "plan": dict(plans.paroi(), caption="Figure 1 — Coupe horizontale du mur de la partie habitation et température "
+                 "dans son épaisseur, un jour d'hiver : les 6 cases repérées en rouge reçoivent les étiquettes."),
+    "blocks": [
+    QBAR(["DT2"], "sur la figure 1"),
+    GRP("Nomme chaque couche du mur et chaque côté de la figure 1.", "Une étiquette par case ; trois étiquettes ne "
+        "servent pas.", [
+        ("Repère 1", KW(P("chauffee")), "Intérieur : pièce chauffée"), ("Repère 2", KW(P("platre")), "Plaque de plâtre"),
+        ("Repère 3", KW(P("polystyrene")), "Polystyrène expansé"), ("Repère 4", KW(P("parpaing")), "Parpaing creux"),
+        ("Repère 5", KW(P("enduit")), "Enduit"), ("Repère 6", KW(P("froid")), "Extérieur : air froid")],
+        "<p>À gauche, la <b>pièce chauffée</b> (19 °C) ; puis la <b>plaque de plâtre</b> (1 cm), le <b>polystyrène "
+        "expansé</b> (10 cm, les billes), le <b>parpaing creux</b> (20 cm, ses alvéoles) et l'<b>enduit</b> (1 cm) ; "
+        "à droite, l'<b>air extérieur</b> (−5 °C). La plaque de plâtre et le polystyrène forment le complexe de "
+        "doublage, collé contre le parpaing.</p>", etiquettes=E_PAROI, liste="Couches et côtés",
+        zones=["1", "2", "3", "4", "5", "6"]),
+    GRP("Quel procédé d'isolation ce mur utilise-t-il ?", "Regarde de quel côté du parpaing se trouve l'isolant.", [
+        ("Procédé", KW(P("iti")), "Isolation par l'intérieur (ITI)")],
+        "<p>L'isolant est posé contre la face intérieure du mur porteur : c'est une <b>isolation par l'intérieur</b>, "
+        "facile et rapide à mettre en œuvre (figure 3 du cours).</p>", etiquettes=E_PROCEDE, liste="Procédés"),
+    Q("Avec ce procédé, l'isolation est-elle interrompue là où les planchers et les murs de refend rejoignent la "
+      "façade ?", "Réponds par oui ou non.", OUI_NON(True), "Oui : ce sont des ponts thermiques",
+      "<p><b>Oui.</b> Le plancher et les murs de refend touchent directement le mur porteur : l'isolant intérieur "
+      "s'arrête à leur niveau. Ces <b>ponts thermiques</b> laissent passer la chaleur ; l'isolation par l'extérieur "
+      "les supprime, car l'isolant enveloppe tout le mur.</p>"),
+    Q("Dans quelle couche la température chute-t-elle le plus ?", "Observe la courbe rouge de la figure 1.",
+      KW(P("polystyrene|isolant")), "Le polystyrène expansé (l'isolant)",
+      "<p>La courbe tombe de près de 19 °C à environ −3,4 °C dans le <b>polystyrène expansé</b> : l'isolant freine "
+      "le passage de la chaleur, c'est lui qui « tient » l'écart de température. Dans le parpaing, elle ne baisse "
+      "plus que d'un degré et demi.</p>"),
+    Q("Calcule l'épaisseur totale du mur.", "Additionne les épaisseurs du DT2 ; une valeur et son unité.", EPAIS(32),
+      "32 cm", "<p>" + calc("1 + 10 + 20 + 1 = 32 cm") + " On retrouve la cote des murs de la partie habitation sur le "
+      "plan du rez-de-chaussée (DT3).</p>"),
+]})
+
+# ------------------------------------------------------------ Partie 3 : résistance, coefficient U, déperdition
+PARTS_IP.append({"title": "Résistance, coefficient U et déperdition", "minutes": 15, "intro": [
+    "<p>Les formules du cours (rappelées en DT1) : <b>R = e / λ</b> pour une couche, avec l'épaisseur e en "
+    "<b>mètres</b> ; <b>R<sub>totale</sub> = R<sub>1</sub> + R<sub>2</sub> + …</b> ; <b>U = 1 / R<sub>totale</sub></b> "
+    "et <b>D = U × S</b>.</p>"],
+    "blocks": [
+    QBAR(["DT1", "DT2"]),
+    GRP("Calcule la résistance thermique de chaque couche du mur.", "R = e / λ, avec e en mètres ; résultats en "
+        "m²·K/W, au centième.", [
+        ("Plaque de plâtre : R<sub>1</sub> (m²·K/W)", NUM(0.04, tol=0.0005, rel=0), "0,04"),
+        ("Polystyrène expansé : R<sub>2</sub> (m²·K/W)", NUM(3.125, tol=0.006, rel=0), "3,125, soit 3,13"),
+        ("Parpaing creux : R<sub>3</sub> (m²·K/W)", NUM(0.2105, tol=0.006, rel=0), "0,21"),
+        ("Enduit : R<sub>4</sub> (m²·K/W)", NUM(0.01, tol=0.0005, rel=0), "0,01")],
+        "<ul><li>Plaque de plâtre : " + calc("R₁ = 0,01 / 0,25 = 0,04 m²·K/W") + "</li><li>Polystyrène expansé : "
+        + calc("R₂ = 0,10 / 0,032 = 3,125 m²·K/W") + "</li><li>Parpaing creux : " + calc("R₃ = 0,20 / 0,95 ≈ 0,21 "
+        "m²·K/W") + "</li><li>Enduit : " + calc("R₄ = 0,01 / 1 = 0,01 m²·K/W") + "</li></ul><p>Attention à l'unité : "
+        "10 cm = 0,10 m. Avec e en centimètres, on trouverait des résistances cent fois trop grandes.</p>"),
+    Q("Calcule la résistance thermique totale du mur.", "Une valeur et son unité.",
+      NUM(3.3855, "m²·K/W", tol=0.01, rel=0), "3,39 m²·K/W",
+      "<p>" + calc("R = 0,04 + 3,125 + 0,21 + 0,01 ≈ 3,39 m²·K/W") + " Le polystyrène apporte à lui seul plus de "
+      "92 % de la résistance du mur.</p>"),
+    Q("Calcule le coefficient de transfert thermique U du mur.", "Une valeur et son unité, au centième.",
+      NUM(0.2954, "W/(m²·K)", tol=0.006, rel=0), "0,30 W/(m²·K)",
+      "<p>" + calc("U = 1 / R = 1 / 3,39 ≈ 0,30 W/(m²·K)") + " Chaque mètre carré de mur laisse passer 0,30 W par "
+      "degré d'écart entre l'intérieur et l'extérieur.</p>"),
+    Q("Calcule la déperdition thermique D du pan de mur étudié (DT2).", "Une valeur et son unité.",
+      NUM(7.385, "W/K", tol=0.15, rel=0), "7,4 W/K",
+      "<p>Le pan de mur mesure 25 m² : " + calc("D = U × S = 0,295 × 25 ≈ 7,4 W/K") + "</p>"),
+    Q("Calcule la puissance perdue par ce pan de mur quand il fait 19 °C dans la maison et −5 °C dehors.",
+      "P = D × (température intérieure − température extérieure) ; une valeur et son unité.",
+      NUM(177, "W", tol=5, rel=0), "Environ 177 W",
+      "<p>L'écart de température est de 19 − (−5) = 24 K : " + calc("P = 7,4 × 24 ≈ 177 W") + " Pour toute la "
+      "maison, on additionne les pertes de toutes les parois (murs, toiture, plancher bas, baies) et celles du "
+      "renouvellement d'air.</p>"),
+]})
+
+# ------------------------------------------------------------ Partie 4 : comparer et choisir
+PARTS_IP.append({"title": "Comparer et choisir", "minutes": 10, "intro": [
+    "<p>Que vaudrait ce mur sans son isolant ? Et quelle épaisseur d'isolant choisir pour faire mieux ?</p>"],
+    "blocks": [
+    QBAR(["DT1", "DT2"]),
+    Q("Calcule la résistance thermique totale du même mur sans polystyrène (plaque de plâtre collée sur le parpaing).",
+      "Une valeur et son unité.", NUM(0.2605, "m²·K/W", tol=0.006, rel=0), "0,26 m²·K/W",
+      "<p>" + calc("R = 0,04 + 0,21 + 0,01 = 0,26 m²·K/W") + " Sans isolant, le mur résiste treize fois moins.</p>"),
+    Q("Calcule la déperdition D de ce mur non isolé, pour les mêmes 25 m².", "Une valeur et son unité.",
+      NUM(96, "W/K", tol=1.5, rel=0), "96 W/K",
+      "<p>" + calc("U = 1 / 0,26 ≈ 3,84 W/(m²·K)") + " puis " + calc("D = 3,84 × 25 ≈ 96 W/K") + "</p>"),
+    Q("Combien de fois le mur isolé perd-il moins de chaleur que le mur non isolé ?", "Rapport des deux "
+      "déperditions, arrondi à l'unité.", NUM(13, tol=0.6, rel=0), "Environ 13 fois",
+      "<p>" + calc("96 ÷ 7,4 ≈ 13") + " Dix centimètres de polystyrène divisent les pertes du mur par 13.</p>"),
+    Q("Quelle épaisseur de polystyrène expansé donne, à elle seule, une résistance R = 4 m²·K/W ?",
+      "e = R × λ ; une valeur et son unité.", EPAIS(12.8, tol=0.05), "12,8 cm, soit 0,128 m",
+      "<p>" + calc("e = R × λ = 4 × 0,032 = 0,128 m = 12,8 cm") + "</p>"),
+    Q("Quelle épaisseur commerciale de polystyrène faut-il alors choisir ?", "Parmi les épaisseurs vendues (DT1) ; une "
+      "valeur et son unité.", EPAIS(14), "14 cm",
+      "<p>12 cm ne suffisent pas (R = 0,12 / 0,032 = 3,75 m²·K/W) : on choisit l'épaisseur vendue juste au-dessus, "
+      "<b>14 cm</b> (R ≈ 4,4 m²·K/W).</p>"),
+    Q("Quelle épaisseur de parpaing creux faudrait-il pour obtenir la même résistance R = 4 m²·K/W ?",
+      "e = R × λ ; une valeur et son unité.", NUM(3.8, "m", variantes=[(380, "cm"), (3800, "mm")], tol=0.01, rel=0),
+      "3,80 m",
+      "<p>" + calc("e = 4 × 0,95 = 3,80 m") + " Un mur de presque 4 m d'épaisseur ! Le mur porteur tient la maison, "
+      "l'isolant la protège du froid : chaque matériau a son rôle.</p>"),
+]})
+
 # ============================================================ DOCUMENTS (dossiers de présentation et techniques)
 # (clé, titre, nature, dossier technique ?, contenu HTML) ; un exercice cite les clés de ses documents dans "docs".
 DOCS = [
@@ -833,6 +983,44 @@ DOCS = [
      '<div class="doc-text">' + illustration("lp-coupe", "Coupe transversale : chambre 1 et bains à l'étage, salon "
                                              "séjour et cuisine au rez-de-chaussée, vide sanitaire, cotes de "
                                              "niveau 0,00, −0,60 et −1,25, pente du toit 33 %", 600) + "</div>"),
+    # exercice 1.2 (affichés DT1 et DT2 ; le plan du rez-de-chaussée y devient DT3)
+    ("ip-DT1", "Fiches matériaux : conductivités et formules", "Dossier technique", True,
+     '<div class="doc-text"><h3>Conductivité thermique λ de quelques matériaux</h3><table class="t"><thead><tr>'
+     "<th>Matériau</th><th>λ en W/(m·K)</th><th>Rôle dans la paroi</th></tr></thead><tbody>"
+     "<tr><td>Polystyrène expansé (PSE)</td><td>0,032</td><td>isolant</td></tr>"
+     "<tr><td>Laine de verre</td><td>0,035</td><td>isolant</td></tr>"
+     "<tr><td>Laine de bois</td><td>0,038</td><td>isolant</td></tr>"
+     "<tr><td>Ossature bois</td><td>0,12</td><td>structure</td></tr>"
+     "<tr><td>Brique Monomur</td><td>0,13</td><td>structure</td></tr>"
+     "<tr><td>Plaque de plâtre</td><td>0,25</td><td>parement intérieur</td></tr>"
+     "<tr><td>Terre crue</td><td>0,6 à 1</td><td>structure</td></tr>"
+     "<tr><td>Parpaing creux</td><td>0,95</td><td>structure</td></tr>"
+     "<tr><td>Enduit</td><td>1</td><td>protection extérieure</td></tr></tbody></table>"
+     "<p>Parpaing, ossature bois, Monomur et terre crue : valeurs du cours ; autres matériaux : valeurs usuelles.</p>"
+     "<p><b>Isolant thermique</b> : matériau dont la conductivité λ est inférieure à 0,065 W/(m·K).</p>"
+     "<h3>Épaisseurs vendues</h3><p>Panneaux de polystyrène expansé pour le doublage des murs : 4, 6, 8, 10, 12, 14 et "
+     "16 cm.</p>"
+     "<h3>Formules</h3><ul><li>Résistance thermique d'une couche : <b>R = e / λ</b>, avec e en m, λ en W/(m·K) et R "
+     "en m²·K/W.</li><li>Paroi de plusieurs couches : <b>R<sub>totale</sub> = R<sub>1</sub> + R<sub>2</sub> + "
+     "R<sub>3</sub> + …</b></li><li>Coefficient de transfert thermique : <b>U = 1 / R<sub>totale</sub></b>, en "
+     "W/(m²·K).</li><li>Déperdition thermique de la paroi : <b>D = U × S</b>, en W/K, avec S la surface de la paroi "
+     "en m².</li><li>Puissance perdue : <b>P = D × (T<sub>intérieure</sub> − T<sub>extérieure</sub>)</b>, en W."
+     "</li></ul><p>Plus R est grande, ou plus U est petit, plus la paroi est isolante.</p></div>"),
+    ("ip-DT2", "Le mur de la partie habitation", "Dossier technique", True,
+     '<div class="doc-text"><h3>Composition du mur, de l\'intérieur vers l\'extérieur</h3><table class="t"><thead>'
+     "<tr><th>Couche</th><th>Matériau</th><th>Épaisseur</th></tr></thead><tbody>"
+     "<tr><td>1</td><td>Plaque de plâtre</td><td>1 cm</td></tr>"
+     "<tr><td>2</td><td>Polystyrène expansé</td><td>10 cm</td></tr>"
+     "<tr><td>3</td><td>Parpaing creux</td><td>20 cm</td></tr>"
+     "<tr><td>4</td><td>Enduit extérieur</td><td>1 cm</td></tr></tbody></table>"
+     "<p>La plaque de plâtre et le polystyrène forment un <b>complexe de doublage</b>, collé contre le parpaing par "
+     "des plots de colle : c'est une isolation intérieure, comme sur la figure 3 du cours.</p>"
+     + illustration("ch-fig03-isolation-interieure", "Isolation par laine de verre (mur, isolant, rails, plâtre) et "
+                    "isolation par placoplâtre (mur, point de colle, isolant, plâtre, bande à joint)", 600,
+                    "Figure 3 du cours — Exemples d'isolation intérieure.") +
+     "<h3>Le pan de mur étudié</h3><ul><li>Surface : <b>25 m²</b>, baies déduites.</li><li>Températures : "
+     "<b>19 °C</b> dans la maison, <b>−5 °C</b> dehors (température extérieure de base, un jour froid d'hiver)."
+     "</li></ul></div>"),
 ]
 
 
@@ -856,6 +1044,16 @@ EXO_DEFS = [
      "sub": "Lire le dossier de plans d'un pavillon : nature des vues, orientation, architecture, cotes et épaisseurs, "
             "dimensions des pièces, hauteurs et niveaux, escalier ; puis juger s'il suit les principes de "
             "l'architecture bioclimatique."},
+    {"key": "isoler-paroi", "prefix": "b", "tag": "Exercice 1.2", "level": "Niveau 1",
+     "title": "Isoler une paroi", "parts": PARTS_IP, "docs": [("DT1", "ip-DT1"), ("DT2", "ip-DT2"), ("DT3", "DT2")],
+     "consignes": CONSIGNES_MODES + CONSIGNES_SAISIE + CONSIGNES_ETIQUETTES + CONSIGNES_DOCS + CONSIGNES_BAREME,
+     "hero": ("ch-fig03-isolation-interieure", "Isolation intérieure : isolant et plaque de plâtre contre le mur",
+              "Le mur du pavillon, isolé par l'intérieur : ses couches, sa résistance, ses pertes."),
+     "mots": ["Conductivité λ", "Résistance R", "Coefficient U", "Déperdition"], "vign": "carte-ex12",
+     "valt": "Un mur isolé par l'intérieur",
+     "sub": "Le mur du pavillon de l'exercice 1.1, couche par couche : reconnaître les isolants, nommer les couches "
+            "sur une coupe, calculer les résistances, le coefficient U et la déperdition, puis comparer avec un mur "
+            "sans isolant et choisir une épaisseur d'isolant."},
 ]
 
 

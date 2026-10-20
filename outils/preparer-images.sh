@@ -45,6 +45,9 @@ entiere() { convert "$1" -background "${3:-white}" -alpha remove -alpha off -res
   -extent 480x270 -strip -colors 256 "PNG8:$OUT/$2"; }
 remplir "$SRC/ch-fig08-vmc-double-flux.png" carte-cours-1.jpg "-quality 82"   # cours 1 : maison et VMC double flux
 remplir "$SRC/lp-perspective.png"          carte-ex11.png    "-colors 256"     # exercice 1.1 : le pavillon
+# exercice 1.2 : la moitié gauche de la figure 3 du cours (isolation intérieure par laine de verre)
+convert "$SRC/ch-fig03-isolation-interieure.png" -crop 50%x100%+0+0 +repage "$OUT/carte-ex12-src.png"
+remplir "$OUT/carte-ex12-src.png" carte-ex12.jpg "-quality 82" && rm "$OUT/carte-ex12-src.png"
 
 images=("$OUT"/*.png "$OUT"/*.jpg)
 if [ ${#images[@]} -gt 0 ]; then

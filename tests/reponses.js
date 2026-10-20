@@ -29,4 +29,21 @@ module.exports = {
     // Partie 6 — le pavillon est-il bioclimatique ?
     a6_1: "Nord", a6_2: "Le garage", a6_3: "Sud",
   },
+  // Exercice 1.2 — Isoler une paroi (?ex=isoler-paroi)
+  "isoler-paroi": {
+    // Partie 1 — les matériaux du mur
+    b1_1_1: "Non isolant", b1_1_2: "Isolant", b1_1_3: "Non isolant", b1_1_4: "Isolant", b1_1_5: "Non isolant",
+    b1_1_6: "Isolant",
+    b1_2_1: "Polystyrène expansé", b1_2_2: "Laine de bois", b1_2_3: "Ossature bois", b1_2_4: "Parpaing creux",
+    b1_3: "30",
+    // Partie 2 — le mur en coupe
+    b2_1_1: "Intérieur : pièce chauffée", b2_1_2: "Plaque de plâtre", b2_1_3: "Polystyrène expansé",
+    b2_1_4: "Parpaing creux", b2_1_5: "Enduit", b2_1_6: "Extérieur : air froid",
+    b2_2_1: "Isolation par l'intérieur (ITI)", b2_3: "Oui", b2_4: "Le polystyrène expansé", b2_5: "32 cm",
+    // Partie 3 — résistance, coefficient U et déperdition
+    b3_1_1: "0,04", b3_1_2: "3,13", b3_1_3: "0,21", b3_1_4: "0,01",
+    b3_2: "3,39 m²·K/W", b3_3: "0,30 W/(m²·K)", b3_4: "7,4 W/K", b3_5: "177 W",
+    // Partie 4 — comparer et choisir
+    b4_1: "0,26 m²·K/W", b4_2: "96 W/K", b4_3: "13", b4_4: "12,8 cm", b4_5: "14 cm", b4_6: "3,80 m",
+  },
 };
