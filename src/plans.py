@@ -8,6 +8,10 @@ baie, allège, trumeau, cote de niveau). Aucune valeur n'est écrite : l'élève
 paroi() (exercice 1.2) : le mur de la partie habitation du pavillon en coupe horizontale, couche par couche, avec
 l'allure de la température dans son épaisseur. Les six cases reçoivent les noms des couches et des deux ambiances.
 
+iti_ite() (exercice 2.1) : deux coupes verticales d'un mur au droit d'un plancher, isolé par l'intérieur puis par
+l'extérieur. En ITI, le plancher traverse l'isolant et la chaleur fuit par la liaison (pont thermique) ; en ITE,
+l'isolant passe devant le plancher. Les six cases reçoivent les noms des procédés et des éléments.
+
 Format attendu par le générateur (render_plan) : {"svg", "w", "h", "cases": {repère: (x, y, l, h, indication)}, "maxw"},
 coordonnées dans le viewBox du dessin.
 """
@@ -114,6 +118,70 @@ def paroi():
     return {"svg": svg, "w": PW, "h": PH, "cases": cases, "maxw": 980, "cls": "ip-fig"}
 
 
+# ------------------------------------------------------------ exercice 2.1 : ITI ou ITE, au droit d'un plancher
+IW, IH = 960, 540
+I_HAUT, I_BAS = 70, 470                   # hauteur de mur représentée
+DALLE = (250, 290)                        # plancher : dessus, dessous
+FLECHE_Y = 270
+
+
+def _fleche(x1, x2, y, cls):
+    """Flèche horizontale de x1 vers x2 (x2 < x1) : le flux de chaleur, de l'intérieur vers l'extérieur."""
+    return (f'<line x1="{x1}" y1="{y}" x2="{x2 + 14}" y2="{y}" class="{cls}"/>'
+            f'<polygon points="{x2},{y} {x2 + 18},{y - 9} {x2 + 18},{y + 9}" class="{cls}-p"/>')
+
+
+def _coupe(ox, ite):
+    """Une coupe : extérieur à gauche, intérieur à droite ; mur en parpaing, isolant, plancher en béton."""
+    d1, d2 = DALLE
+    h = I_BAS - I_HAUT
+    if ite:   # enduit, isolant continu, parpaing, plâtre ; le plancher s'appuie sur le parpaing
+        x_en, x_iso, x_pa, x_pl, x_int = ox + 126, ox + 130, ox + 174, ox + 244, ox + 250
+        iso = f'<rect x="{x_iso}" y="{I_HAUT}" width="{x_pa - x_iso}" height="{h}" fill="url(#ii-iso)" class="ii-c"/>'
+        mur = (f'<rect x="{x_pa}" y="{I_HAUT}" width="{x_pl - x_pa}" height="{h}" fill="url(#ii-parp)" class="ii-c"/>'
+               f'<rect x="{x_pl}" y="{I_HAUT}" width="{x_int - x_pl}" height="{h}" class="ii-platre"/>')
+        dalle_x = x_pa + 8
+        flux = _fleche(ox + 410, x_pa - 12, FLECHE_Y, "ii-flux-faible")  # freinée par l'isolant
+    else:     # enduit, parpaing, isolant et plâtre interrompus par le plancher, qui traverse le mur
+        x_en, x_pa, x_iso, x_pl, x_int = ox + 166, ox + 170, ox + 240, ox + 284, ox + 290
+        iso = "".join(f'<rect x="{x_iso}" y="{y1}" width="{x_pl - x_iso}" height="{y2 - y1}" fill="url(#ii-iso)" '
+                      f'class="ii-c"/><rect x="{x_pl}" y="{y1}" width="{x_int - x_pl}" height="{y2 - y1}" '
+                      f'class="ii-platre"/>' for y1, y2 in ((I_HAUT, d1), (d2, I_BAS)))
+        mur = f'<rect x="{x_pa}" y="{I_HAUT}" width="{x_iso - x_pa}" height="{h}" fill="url(#ii-parp)" class="ii-c"/>'
+        dalle_x = x_pa + 8
+        flux = _fleche(ox + 410, ox + 24, FLECHE_Y, "ii-flux")
+    return (f'<rect x="{ox}" y="{I_HAUT}" width="{x_en - ox}" height="{h}" fill="#E8F1FA"/>'
+            f'<rect x="{x_int}" y="{I_HAUT}" width="{ox + 440 - x_int}" height="{h}" fill="#FBF1E4"/>'
+            f'<rect x="{x_en}" y="{I_HAUT}" width="4" height="{h}" class="ii-enduit"/>{mur}{iso}'
+            f'<rect x="{dalle_x}" y="{d1}" width="{ox + 440 - dalle_x}" height="{d2 - d1}" fill="url(#ii-beton)" '
+            f'class="ii-c"/>'
+            f'<path d="M{ox},{I_HAUT} h440 M{ox},{I_BAS} h440" class="ii-coupure"/>{flux}'
+            f'<text x="{ox + 8}" y="{I_HAUT + 22}" class="ii-t">extérieur</text>'
+            f'<text x="{ox + 432}" y="{I_HAUT + 22}" class="ii-t" text-anchor="end">intérieur</text>')
+
+
+def iti_ite():
+    g, d = 20, 500        # origines des deux coupes
+    svg = f"""<svg class="plan-svg" viewBox="0 0 {IW} {IH}" role="img" aria-label="Deux coupes verticales d'un mur au droit d'un plancher : à gauche l'isolant est côté intérieur et le plancher le traverse, une grosse flèche de chaleur passe par le plancher ; à droite l'isolant est côté extérieur et passe devant le plancher ; six cases repérées de 1 à 6">
+<defs><pattern id="ii-iso" width="12" height="12" patternUnits="userSpaceOnUse"><rect width="12" height="12" fill="#F6E27A"/>
+<path d="M0,6 q3,-5 6,0 t6,0" fill="none" stroke="#C9A93A" stroke-width="1.2"/></pattern>
+<pattern id="ii-parp" width="10" height="10" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="10" height="10" fill="#C3C8CD"/>
+<line x1="0" y1="0" x2="0" y2="10" stroke="#8C949B" stroke-width="2"/></pattern>
+<pattern id="ii-beton" width="14" height="14" patternUnits="userSpaceOnUse"><rect width="14" height="14" fill="#D7D9D4"/>
+<circle cx="4" cy="4" r="1.3" fill="#8C918A"/><circle cx="10" cy="9" r="1" fill="#8C918A"/></pattern></defs>
+<rect width="{IW}" height="{IH}" fill="#FFFFFF"/>
+{_coupe(g, False)}{_coupe(d, True)}
+<line x1="480" y1="{I_HAUT}" x2="480" y2="{I_BAS}" class="ii-sep"/>
+<g class="ii-renvoi"><polyline points="176,318 {g + 182},{DALLE[1] - 8}"/><circle cx="{g + 182}" cy="{DALLE[1] - 8}" r="4"/>
+<line x1="595" y1="492" x2="{d + 152}" y2="440"/><circle cx="{d + 152}" cy="440" r="4"/>
+<line x1="775" y1="492" x2="{d + 209}" y2="440"/><circle cx="{d + 209}" cy="440" r="4"/>
+<line x1="850" y1="226" x2="850" y2="{DALLE[0] + 12}"/><circle cx="850" cy="{DALLE[0] + 12}" r="4"/></g>
+</svg>"""
+    cases = {"1": (165, 16, 150, 36, ""), "2": (645, 16, 150, 36, ""), "3": (26, 300, 150, 36, ""),
+             "4": (520, 492, 150, 36, ""), "5": (700, 492, 150, 36, ""), "6": (775, 190, 150, 36, "")}
+    return {"svg": svg, "w": IW, "h": IH, "cases": cases, "maxw": 980, "cls": "ii-fig"}
+
+
 PLAN_CSS = """
 /* ---------- exercice 1.1 : schéma de la baie (préfixe lp-) ---------- */
 .lp-fig .plan-svg text{font-family:var(--f-texte)}
@@ -132,4 +200,14 @@ PLAN_CSS = """
 .ip-coupure{stroke:#46525C; stroke-width:1.5; stroke-dasharray:10 5; fill:none}
 .ip-temp{fill:none; stroke:#C8102E; stroke-width:3; stroke-linejoin:round}
 .ip-renvoi polyline, .ip-renvoi line{fill:none; stroke:var(--encre); stroke-width:1.4} .ip-renvoi circle{fill:var(--encre)}
+/* ---------- exercice 2.1 : ITI ou ITE (préfixe ii-) ---------- */
+.ii-fig .plan-svg text{font-family:var(--f-texte)}
+.ii-t{font-size:13px; fill:var(--encre-2); font-style:italic}
+.ii-c{stroke:#5E5848; stroke-width:1.2} .ii-platre{fill:#F6F3EA; stroke:#5E5848; stroke-width:1}
+.ii-enduit{fill:#E6DECB; stroke:#5E5848; stroke-width:1}
+.ii-coupure{stroke:#46525C; stroke-width:1.5; stroke-dasharray:10 5; fill:none}
+.ii-sep{stroke:var(--trait); stroke-width:2}
+.ii-flux{stroke:#C8102E; stroke-width:9; stroke-linecap:round; opacity:.85} .ii-flux-p{fill:#C8102E; opacity:.85}
+.ii-flux-faible{stroke:#C8102E; stroke-width:3; stroke-linecap:round; opacity:.7} .ii-flux-faible-p{fill:#C8102E; opacity:.7}
+.ii-renvoi polyline, .ii-renvoi line{fill:none; stroke:var(--encre); stroke-width:1.4} .ii-renvoi circle{fill:var(--encre)}
 """

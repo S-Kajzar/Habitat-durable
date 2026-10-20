@@ -11,8 +11,9 @@ des cours, étiquettes à glisser, schémas à compléter, QCM, tests, publicati
 `.gitignore` sont copiés à l'identique.
 
 **État livré** : l'accueil (`index.html`) présente le **Cours 1** (Habitat durable, Niveau 1), trois exercices
-(**Exercice 1.1** Lecture de plan : initiation, **Exercice 1.2** Isoler une paroi, **QCM 1.3** La maison RE2020, tous
-de Niveau 1) et l'**Étude 1** (Le pavillon face à la RE2020, Niveau 2). Une rubrique vide serait annoncée par une
+(**Exercice 1.1** Lecture de plan : initiation, **Exercice 1.2** Isoler une paroi, **QCM 1.3** La maison RE2020, de
+Niveau 1 ; **Exercice 2.1** ITI ou ITE : choisir son isolation, de Niveau 2) et l'**Étude 1** (Le pavillon face à la
+RE2020, Niveau 2). Une rubrique vide serait annoncée par une
 carte « En cours d'édition », remplacée d'elle-même dès qu'un contenu y est décrit dans `src/generer.py`. La rubrique
 **Les ressources** (formulaire, fiches…) n'apparaît que lorsqu'une page annexe y est rangée. Les numéros suivent la
 logique RDM : le premier chiffre d'un exercice donne son niveau. Les deux exercices et l'étude suivent le même
@@ -224,23 +225,62 @@ chauffage **5 400 kWh** (50 kWh par m² habitable) ; production photovoltaïque 
 versant ouest ; modules de 1,00 × 1,00 m, 100 Wc et 36 cellules, comme dans le cours. Si ces valeurs changent, les
 réponses se recalculent dans `src/generer.py` et `tests/reponses.js`.
 
+## Exercice 2.1 — ITI ou ITE : choisir son isolation (Niveau 2, `?ex=iti-ite`)
+
+Dans quels cas isoler par l'intérieur ou par l'extérieur ? 6 parties (10, 15, 15, 20, 10 et 10 min), 24 questions,
+54 cases, 1 h 20. L'exercice prolonge l'exercice 1.2 (même mur en parpaing, mêmes conductivités).
+
+- **Deux procédés** : un schéma à compléter (`plans.iti_ite()`, préfixe `ii-`), deux coupes verticales du même mur
+  au droit du plancher de l'étage. En ITI, le plancher traverse l'isolant et une large flèche de chaleur passe par la
+  liaison (pont thermique) ; en ITE, l'isolant passe devant le plancher et la flèche, fine, s'arrête sur lui.
+- **Calcul thermique** : R du mur (4,01 m²·K/W), la même en ITI et en ITE (une somme ne dépend pas de l'ordre), U
+  (0,25), puis D = U × S + ψ × L avec les ponts thermiques : 57,3 W/K en ITI contre 38,1 W/K en ITE ; en ITI, 39 % des
+  pertes des murs passent par les liaisons.
+- **Trois climats** : Strasbourg (H1), Nantes (H2), Nice (H3) ; énergie annuelle E = D × DJU × 24 / 1 000 (4 104 kWh
+  en ITI à Strasbourg) ; économie de l'ITE : 1 368, 1 003 et 638 kWh par an, soit 33 % partout ; priorité de chaque
+  région (l'hiver, un climat doux, l'été).
+- **Déphasage** (formule simple φ = 1,38 × e × √(ρ × c / (3 600 × λ)), déphasages des couches additionnés) : fibre de
+  bois 16 cm 10,7 h (calcul guidé en trois étapes), polystyrène 12 cm 2,3 h, parpaing 20 cm 4,8 h ; murs : 15,5 h en
+  fibre de bois, 7,1 h en polystyrène, en ITI comme en ITE (le calcul simple ne voit pas l'ordre des couches) ; heure
+  d'arrivée du pic de 15 h (vers 22 h ou vers 6 h 30).
+- **Inertie et occupation** : place de la masse (dans ou hors du volume chauffé), inertie forte ou faible, relance
+  après une absence ; procédé à conseiller pour une résidence principale, une maison de week-end, une maison à Nice,
+  un studio de vacances.
+- **Rénovation ou neuf** : atouts de chaque procédé, surface habitable perdue par un doublage de 14 cm (9,52 m²),
+  quatre cas (pierre de taille, pavillon des années 1970 à ravaler, copropriété, maison neuve).
+- **Documents** : DT1 les trois murs comparés, la maison, ψ et les formules (avec les figures 3 et 4 du cours) ; DT2
+  les matériaux (λ, ρ, c) et le déphasage ; DT3 les climats, l'occupation et la rénovation.
+
+**Hypothèses, à vérifier** (toutes écrites dans les DT) :
+- **Ponts thermiques** : ψ = 0,7 W/(m·K) en ITI sans rupteur, 0,1 W/(m·K) en ITE ; valeurs indicatives, le cours ne
+  chiffre pas les ponts thermiques.
+- **Matériaux** : polystyrène ρ = 15 kg/m³, c = 1 450 J/(kg·K) ; fibre de bois λ = 0,040 W/(m·K), ρ = 160 kg/m³,
+  c = 2 100 J/(kg·K) ; parpaing creux ρ = 1 050 kg/m³ (un bloc de 20 × 20 × 50 cm d'environ 21 kg), c = 1 000 J/(kg·K),
+  avec le λ = 0,95 du cours.
+- **Déphasage** : formule simple d'une couche homogène, déphasages des couches additionnés ; le DT2 précise que c'est
+  un ordre de grandeur. Recommandation retenue : au moins 8 h, idéalement 10 à 12 h.
+- **Climats** : DJU arrondis (base 18 °C) de 3 000 à Strasbourg, 2 200 à Nantes et 1 400 à Nice ; zones H1, H2 et H3 ;
+  pas de température extérieure de base, pour ne pas dépendre d'une table départementale.
+- **Maison** : 140 m² de murs, 32 m de liaison avec le plancher de l'étage ; maison à rénover : 2 niveaux de 34 m de
+  murs extérieurs, doublage de 14 cm.
+
 ## Vérifications effectuées
 
-- `node --test tests/correction.test.js` : 10 tests — gabarit inchangé (empreinte), style et moteur de correction de
-  la page identiques à ceux du gabarit ; configuration des quatre exercices ; réponse de référence juste pour chaque
-  case (148 cases hors QCM) ; saisie vide refusée ; valeur sans unité à un demi-point ; étiquettes (la bonne est
-  proposée, toutes les autres de la liste refusées) ; schémas corrigés ; 200 écritures acceptées et confusions
-  refusées, réparties entre l'exercice 1.1, l'exercice 1.2 et l'étude (unités, e en centimètres dans R = e / λ,
-  écart de 14 K au lieu de 24 K, 15 marches, 1,19 t de granulés…).
+- `node --test tests/correction.test.js` : 11 tests — gabarit inchangé (empreinte), style et moteur de correction de
+  la page identiques à ceux du gabarit ; configuration des cinq exercices ; réponse de référence juste pour chaque
+  case (202 cases hors QCM) ; saisie vide refusée ; valeur sans unité à un demi-point ; étiquettes (la bonne est
+  proposée, toutes les autres de la liste refusées) ; schémas corrigés ; plus de 230 écritures acceptées et
+  confusions refusées, réparties entre les exercices 1.1, 1.2, 2.1 et l'étude (unités, e en centimètres dans
+  R = e / λ, écart de 14 K au lieu de 24 K, 15 marches, 1,19 t de granulés, déphasage sans la racine…).
 - `node --test tests/qcm.test.js` : 3 tests — pour les 46 questions du QCM 1.3, chaque bonne proposition est acceptée,
   chaque autre refusée, une réponse multiple incomplète ou avec un intrus refusée, une explication présente.
-- `tests/navigateur.test.js` (Playwright, Chromium) : 16 parcours, tous réussis — accueil (cartes de même taille à 3
+- `tests/navigateur.test.js` (Playwright, Chromium) : 19 parcours, tous réussis — accueil (cartes de même taille à 3
   à 5 mots-clés, toutes illustrées, téléphone, aucune mention de diplôme ou d'épreuve), adresse inconnue ; cours 1
   (cinq jeux justes, quiz 12/12 et trois étoiles, images partagées affichées, impression, téléphone) ; ses figures et
-  simulateurs ; puis, pour chacun des quatre exercices : entraînement (20,0/20, étiquettes posées sur les schémas comme
+  simulateurs ; puis, pour chacun des cinq exercices : entraînement (20,0/20, étiquettes posées sur les schémas comme
   le ferait l'élève), examen (rien ne filtre avant la remise, y compris à l'impression ; copie vide 0,0/20), documents,
   images partagées affichées et téléphone.
-- Aucune erreur JavaScript dans aucun parcours. Poids : `index.html` 2,9 Mio, dont 2,4 Mio d'images (les figures
+- Aucune erreur JavaScript dans aucun parcours. Poids : `index.html` 3,0 Mio, dont 2,4 Mio d'images (les figures
   communes au cours, au QCM et aux documents ne sont écrites qu'une fois).
 - L'essai de bout en bout du gabarit vide (copie jetable, non livrée) reste valable pour le seul mécanisme que ce
   dépôt n'utilise pas encore (les ressources).
