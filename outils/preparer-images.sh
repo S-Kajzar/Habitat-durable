@@ -5,6 +5,8 @@
 #   - src/images/*.jpg               : photos réduites pour la page
 #   - src/images/carte-*.png|jpg     : images des cartes de l'accueil, tirées des contenus (480 × 270)
 #   - src/images/accueil.svg         : dessin de l'accueil, intégré tel quel (pas de traitement)
+#   - originaux/ch-*                 : figures et photos du cours « Habitat durable » (Word) ; ch-ph-* : photos
+#   - originaux/lp-*                 : pages du dossier de plans de l'exercice 1.1 (lecture de plan)
 # Usage : bash outils/preparer-images.sh   (depuis la racine du dépôt), puis python3 src/generer.py
 set -euo pipefail
 shopt -s nullglob
@@ -12,11 +14,18 @@ cd "$(dirname "$0")/.."
 SRC=src/images/originaux
 OUT=src/images
 
-# 1. Figures reprises telles quelles : PNG quantifiés sur fond blanc, photos réduites
+# 1. Figures reprises telles quelles : PNG quantifiés sur fond blanc (au plus 1100 px de large), photos en JPEG
 for f in "$SRC"/*.png; do
   b=$(basename "$f")
-  case "$b" in carte-*) continue ;; esac  # sources des cartes de l'accueil : voir 2.
-  convert "$f" -background white -alpha remove -alpha off -strip -colors 256 "PNG8:$OUT/$b"
+  case "$b" in
+    carte-*) continue ;;  # sources des cartes de l'accueil : voir 2.
+    # figures redessinées en SVG et rendues interactives (src/cours_habitat.py) : les originaux restent la référence
+    ch-fig01-*|ch-fig02-*|ch-fig05-*|ch-fig06-*|ch-fig11-*|ch-fig15-*|ch-fig-resistances.png) continue ;;
+    lp-dp1-page.png) continue ;;  # page d'origine du DP1 : la perspective en est extraite (lp-perspective.png)
+    *-ph-*) convert "$f" -background white -alpha remove -alpha off -resize '900x900>' -quality 82 -strip \
+              "$OUT/${b%.png}.jpg"; continue ;;
+  esac
+  convert "$f" -background white -alpha remove -alpha off -resize '1100x>' -strip -colors 256 "PNG8:$OUT/$b"
 done
 for f in "$SRC"/*.jpg; do
   b=$(basename "$f")
@@ -34,6 +43,13 @@ remplir() { convert "$1" -background white -alpha remove -alpha off -resize 480x
   -extent 480x270 -strip $3 "$OUT/$2"; }
 entiere() { convert "$1" -background "${3:-white}" -alpha remove -alpha off -resize 456x250 -gravity center \
   -extent 480x270 -strip -colors 256 "PNG8:$OUT/$2"; }
+remplir "$SRC/ch-fig08-vmc-double-flux.png" carte-cours-1.jpg "-quality 82"   # cours 1 : maison et VMC double flux
+remplir "$SRC/lp-perspective.png"          carte-ex11.png    "-colors 256"     # exercice 1.1 : le pavillon
+# exercice 1.2 : la moitié gauche de la figure 3 du cours (isolation intérieure par laine de verre)
+convert "$SRC/ch-fig03-isolation-interieure.png" -crop 50%x100%+0+0 +repage "$OUT/carte-ex12-src.png"
+remplir "$OUT/carte-ex12-src.png" carte-ex12.jpg "-quality 82" && rm "$OUT/carte-ex12-src.png"
+remplir "$SRC/ch-fig10-solaire-combine.png" carte-qcm.jpg "-quality 82"       # QCM 1.3 : système solaire combiné
+remplir "$SRC/lp-facades.png"              carte-etude.png   "-colors 256" north  # étude 1 : la façade ouest du pavillon
 
 images=("$OUT"/*.png "$OUT"/*.jpg)
 if [ ${#images[@]} -gt 0 ]; then

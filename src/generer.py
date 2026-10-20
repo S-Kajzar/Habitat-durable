@@ -27,6 +27,8 @@ import struct
 import types
 import unicodedata
 
+import cours_habitat
+import plans
 import qcm
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -103,6 +105,26 @@ def image(name):
     raise FileNotFoundError(f"src/images/{name}.jpg, .png ou .svg introuvable")
 
 
+PARTAGEES = {}  # images partagées : nom → data URI, écrit une seule fois dans la page (images_js)
+
+
+def image_partagee(name):
+    """Image de src/images que plusieurs contenus peuvent afficher (cours, QCM, documents) : son data URI n'est écrit
+    qu'une fois dans la page ; la balise <img data-img="nom"> le reçoit à l'ouverture (images_js). Rend (l, h)."""
+    src, w, h = image(name)
+    PARTAGEES[name] = src
+    return w, h
+
+
+def images_js():
+    """Les images partagées, une fois chacune, posées dans les balises <img data-img> du contenu ouvert."""
+    if not PARTAGEES:
+        return ""
+    return ("<script>(function () { var I = " + json.dumps(PARTAGEES) + ";\n"
+            "  Array.prototype.forEach.call(document.querySelectorAll(\"img[data-img]\"), function (im) { "
+            "im.src = I[im.getAttribute(\"data-img\")]; }); })();</script>")
+
+
 # ============================================================ correcteurs (moteur Grading du gabarit)
 def P(*alts):
     """Motif de mots-clés : chaque argument liste des mots équivalents séparés par « | », en minuscules et sans
@@ -132,9 +154,11 @@ def unite_normee(u):
     return "".join(t for t in s.split() if re.search("[a-z°]", t))
 
 
-def NUM(valeur, unite=None, accepte=(), tol=0, rel=0.01):
+def NUM(valeur, unite=None, accepte=(), tol=0, rel=0.01, variantes=()):
     """Valeur numérique : juste à rel près (1 % par défaut) ou à tol près. Avec une unité (« m²·K/W »), une valeur
-    juste sans unité, ou avec une autre unité, vaut un demi-point ; accepte : autres écritures de l'unité admises."""
+    juste sans unité, ou avec une autre unité, vaut un demi-point ; accepte : autres écritures de l'unité admises.
+    variantes : la même grandeur dans d'autres unités, alors obligatoires, par exemple [(3.05, "m"), (3050, "mm")]
+    pour 305 cm."""
     g = {"type": "num", "value": valeur}
     if tol:
         g["absTol"] = tol
@@ -143,6 +167,9 @@ def NUM(valeur, unite=None, accepte=(), tol=0, rel=0.01):
     if unite:
         formes = [unite_normee(u) for u in (unite, *accepte)]
         g["unit"] = {"label": unite, "accept": list(dict.fromkeys(formes))}
+    if variantes:
+        g["variants"] = [dict(NUM(v, u, tol=abs(tol * v / valeur) if tol else 0, rel=rel), strictUnit=True)
+                         for v, u in variantes]
     return g
 
 
@@ -445,11 +472,18 @@ def prepare_exo(e):
                 "parts": parts_cfg, "qcfg": qcfg, "skcfg": {}}
 
 
+def docs_de(e):
+    """Documents d'un exercice : [(étiquette affichée, entrée de DOCS)]. Une entrée de "docs" est la clé d'un document,
+    ou (étiquette, clé) pour l'afficher sous une autre étiquette : deux exercices partagent ainsi un document, ou
+    numérotent chacun les leurs à partir de DT1."""
+    par_cle = {d[0]: d for d in DOCS}
+    return [(d, par_cle[d]) if isinstance(d, str) else (d[0], par_cle[d[1]]) for d in e["docs"]]
+
+
 def render_docs(e):
     rail, tabs, secs = [], [], []
     first_dt = True
-    for key, title, kind, is_dt, content in sorted((d for d in DOCS if d[0] in e["docs"]),
-                                                   key=lambda d: (d[3], d[0])):
+    for key, (_cle, title, kind, is_dt, content) in sorted(docs_de(e), key=lambda d: (d[1][3], d[0])):
         if is_dt and first_dt:
             rail.append('<div class="grp" aria-hidden="true"></div>')
             first_dt = False
@@ -467,8 +501,8 @@ def pastille(level):
 
 
 def render_exo_home(e):
-    src, w, h = image(e["hero"][0])
-    docs = sorted(e["docs"], key=lambda k: (k[:2] != "DP", k))
+    w, h = image_partagee(e["hero"][0])
+    docs = sorted((lab for lab, _d in docs_de(e)), key=lambda k: (k[:2] != "DP", k))
     docs_txt = (", ".join(docs[:-1]) + " et " + docs[-1]) if len(docs) > 1 else (docs[0] if docs else "")
     facts = ('<div class="home-facts">'
              f'<div><b>{len(e["P"])} parties</b><span>{e["n_q"]} questions</span></div>'
@@ -479,7 +513,7 @@ def render_exo_home(e):
               f'<div><b>{e["n_cases"]} cases</b><span>un point chacune</span></div></div>'))
     return (f'<div class="home-top"><div class="home-top-l"><header class="home-head"><span class="mc-tag">{e["tag"]}</span>{pastille(e.get("level"))}'
             f'<h1 id="home-title">{e["title"]}</h1><p class="home-sub">{e["sub"]}</p></header>{facts}</div>'
-            f'<figure class="home-hero"><img src="{src}" alt="{esc(e["hero"][1])}" width="{w}" height="{h}">'
+            f'<figure class="home-hero"><img data-img="{e["hero"][0]}" alt="{esc(e["hero"][1])}" width="{w}" height="{h}">'
             f'<figcaption class="small">{e["hero"][2]}</figcaption></figure></div>')
 
 
@@ -519,17 +553,966 @@ CONSIGNES_BAREME = """
     <p><strong>Barème pondéré par la durée conseillée</strong> : chaque partie est notée sur 20, puis pèse au prorata de son temps. Le récapitulatif de fin de sujet donne le détail partie par partie.</p>"""
 
 
+# ============================================================ EXERCICE 1.1 — LECTURE DE PLAN : INITIATION
+# Source : l'activité « Lecture de plan — Activité 1 » (sujet et dossier technique d'un pavillon à étage). Le tableau
+# d'inventaire des menuiseries extérieures (question 13) est retiré ; les questions sont orientées vers l'architecture :
+# nature des vues, orientation, caractères du pavillon, pièces, vocabulaire des baies, lien avec le cours (bioclimatique).
+def LU(v):
+    """Valeur lue sur un plan, sans unité (l'unité est dans le libellé de la case) : exacte."""
+    return NUM(v, tol=1e-6, rel=0)
+
+
+def illustration(name, alt, maxw, caption=""):
+    w, h = image_partagee(name)
+    return (f'<figure class="fig" style="max-width:{maxw}px"><img data-img="{name}" alt="{esc(alt)}" width="{w}" height="{h}">'
+            + (f"<figcaption>{caption}</figcaption>" if caption else "") + "</figure>")
+
+
+E_DOCS = ["Perspective (DP1)", "Façades (DT1)", "Plan du rez-de-chaussée (DT2)", "Plan de l'étage (DT3)",
+          "Coupe transversale (DT4)", "Plan de masse", "Plan de situation"]
+E_ORIENT = ["Nord", "Sud", "Est", "Ouest"]
+E_ARCHI = ["Tuiles romanes", "Ardoises", "Deux versants", "Toit-terrasse", "Appentis (un seul versant)",
+           "Porche sous arcade", "Volets pleins en bois", "Volets roulants", "Double vitrage 4/16/4 à l'argon",
+           "Simple vitrage"]
+E_PIECES = ["Pièce principale", "Pièce de service", "Circulation"]
+E_VOCAB = ["Hauteur sous plafond", "Retombée de linteau", "Hauteur de la baie", "Allège", "Trumeau", "Cote de niveau",
+           "Épaisseur du plancher", "Largeur de la baie"]
+PRINCIPALE, SERVICE = KW(P("principale")), KW(P("service"))
+
+PARTS_LP = []
+
+# ------------------------------------------------------------ Partie 1 : le dossier de plans
+PARTS_LP.append({"title": "Le dossier de plans", "minutes": 10, "intro": [
+    '<div class="cours-split">' + illustration("lp-perspective", "Perspective du pavillon : une partie à étage, une "
+                                               "avancée de plain-pied, un porche sous arcade et le garage", 420,
+                                               "Le pavillon étudié (DP1).") +
+    "<div><p>Le dossier présente un pavillon à étage : sa <b>perspective</b> et ses remarques architecturales (DP1), "
+    "ses <b>façades</b> (DT1), les <b>plans</b> du rez-de-chaussée (DT2) et de l'étage (DT3) et une <b>coupe</b> "
+    "transversale (DT4). La fiche DP2 rappelle comment lire un plan.</p><p>Chaque document montre la maison d'une "
+    "manière différente : avant de lire une cote, il faut savoir sur quel document la chercher.</p></div></div>"],
+    "blocks": [
+    QBAR(["DP1", "DP2", "DT1", "DT2", "DT3", "DT4"]),
+    GRP("Pour chaque information, choisis le document du dossier où on la lit.", "Une étiquette par case.", [
+        ("L'allure générale de la maison, en trois dimensions", KW(P("perspective")), "Perspective (DP1)"),
+        ("L'aspect de chaque face de la maison : tuiles, volets, porche", KW(P("facade|facades")), "Façades (DT1)"),
+        ("La largeur de la cuisine et l'épaisseur des murs du garage", KW(P("rez|chaussee")),
+         "Plan du rez-de-chaussée (DT2)"),
+        ("L'emplacement des chambres 1, 2 et 3", KW(P("etage")), "Plan de l'étage (DT3)"),
+        ("Les hauteurs : allèges, hauteurs sous plafond, niveaux", KW(P("coupe")), "Coupe transversale (DT4)")],
+        "<p>Chaque vue a son rôle :</p><ul><li>la <b>perspective</b> dessine la maison en trois dimensions ;</li>"
+        "<li>une <b>façade</b> montre une face de la maison vue de face, sans profondeur : matériaux, baies, volets ;</li>"
+        "<li>un <b>plan</b> est une coupe horizontale vue de dessus : murs, cloisons, pièces, largeurs et épaisseurs, "
+        "niveau par niveau ;</li><li>une <b>coupe</b> est une tranche verticale : on y lit les hauteurs et les "
+        "niveaux.</li></ul><p>Le plan de masse et le plan de situation, qui placent la maison sur son terrain et dans "
+        "sa commune, ne font pas partie de ce dossier.</p>", etiquettes=E_DOCS, liste="Documents"),
+    GRP("Donne l'orientation des façades A et B (DT1).", "Repère la flèche du Nord sur le plan du rez-de-chaussée "
+        "(DT2), puis retrouve les baies de chaque façade sur le plan.", [
+        ("Façade A", KW(P("ouest")), "Ouest"), ("Façade B", KW(P("sud")), "Sud")],
+        "<p>Sur le plan du rez-de-chaussée, la flèche du <b>Nord</b> pointe vers la droite : le haut du plan est à "
+        "l'<b>ouest</b>, le bas à l'<b>est</b> (porte d'entrée et porte du garage), la gauche au <b>sud</b> (séjour et "
+        "cuisine). La vue axonométrique, sous le plan, nomme d'ailleurs la façade sud et la façade est.</p><ul>"
+        "<li><b>Façade A</b> : la partie à étage, avec les fenêtres des chambres 1 et 2, puis au rez-de-chaussée les "
+        "portes-fenêtres de la chambre 4 et du séjour et la petite fenêtre de la douche : c'est la face du haut du "
+        "plan, à l'<b>ouest</b>.</li><li><b>Façade B</b> : un pignon, les portes-fenêtres du séjour et de la cuisine "
+        "et l'arcade du porche : c'est la face de gauche du plan, au <b>sud</b>.</li></ul>",
+        etiquettes=E_ORIENT, liste="Orientations"),
+    GRP("Caractérise l'architecture du pavillon.", "Lis les remarques architecturales (DP1) et observe les façades "
+        "(DT1).", [
+        ("Couverture (matériau du toit)", KW(P("tuile|tuiles")), "Tuiles romanes"),
+        ("Toit de la partie à étage", KW(P("deux|2", "versant|versants")), "Deux versants"),
+        ("Toit de l'avancée (séjour, cuisine)", KW(P("appentis")), "Appentis (un seul versant)"),
+        ("Entrée de la maison", KW(P("porche|arcade")), "Porche sous arcade"),
+        ("Fermeture des baies", KW(P("volet|volets", "plein|pleins")), "Volets pleins en bois"),
+        ("Vitrage", KW(P("double", "vitrage")), "Double vitrage 4/16/4 à l'argon")],
+        "<p>Les remarques architecturales (DP1) décrivent le pavillon : <b>porche d'entrée sous arcade</b>, portes-"
+        "fenêtres bien exposées, <b>couverture en tuiles romanes</b> pour des versants à faibles pentes ; un toit "
+        "simple à <b>deux versants</b>, et en <b>appentis</b> (un seul versant) sur l'avancée, pour une charpente "
+        "peu onéreuse ; un <b>double vitrage peu émissif 4 + 16 (argon) + 4</b> (deux verres de 4 mm séparés par "
+        "16 mm d'argon) et des <b>volets pleins en bois</b>. Les façades (DT1) le montrent.</p>",
+        etiquettes=E_ARCHI, liste="Architecture"),
+]})
+
+# ------------------------------------------------------------ Partie 2 : les cotes des plans
+PARTS_LP.append({"title": "Lire les cotes des plans", "minutes": 15, "intro": [
+    "<p>Sur les plans, les cotes sont écrites en <b>centimètres</b>. Rappel : 1 m = 100 cm = 1 000 mm.</p>"],
+    "blocks": [
+    QBAR(["DP2", "DT2", "DT3"]),
+    GRP("Quelle est l'épaisseur des cloisons de distribution de l'étage (DT3) ?", "En cm, puis en mm.", [
+        ("Épaisseur (cm)", LU(5), "5"), ("Épaisseur (mm)", LU(50), "50")],
+        "<p>Les cloisons qui séparent les chambres et le dégagement sont cotées <b>5</b> : 5 cm = 50 mm (× 10).</p>"),
+    GRP("Quelle est la largeur de la cuisine (DT2) ?", "En cm, puis en m.", [
+        ("Largeur (cm)", LU(418), "418"), ("Largeur (m)", LU(4.18), "4,18")],
+        "<p>Sous la cuisine, la cote intérieure indique <b>418</b> : 418 cm = 4,18 m (÷ 100).</p>"),
+    GRP("Quelle est l'épaisseur des murs extérieurs de la partie habitation (DT2) ?", "En cm, puis en mm.", [
+        ("Épaisseur (cm)", LU(32), "32"), ("Épaisseur (mm)", LU(320), "320")],
+        "<p>Les murs de la partie habitation sont cotés <b>32</b> (par exemple en haut du salon séjour) : 32 cm = "
+        "320 mm.</p>"),
+    GRP("Quelle est l'épaisseur des murs extérieurs du garage (DT2) ?", "En cm, puis en mm.", [
+        ("Épaisseur (cm)", LU(20), "20"), ("Épaisseur (mm)", LU(200), "200")],
+        "<p>Les murs du garage sont cotés <b>20</b> : 20 cm = 200 mm. Ils sont plus minces : le garage n'est pas "
+        "chauffé, il n'est pas isolé.</p>"),
+    Q("Calcule l'épaisseur du complexe isolant des murs de la partie habitation.", "Les murs de l'habitation et du "
+      "garage ont le même mur porteur ; seule l'habitation est isolée. Une valeur et son unité.",
+      NUM(12, "cm", variantes=[(0.12, "m"), (120, "mm")], tol=1e-6, rel=0), "12 cm",
+      "<p>Le mur de l'habitation (32 cm) est le mur porteur du garage (20 cm) doublé, côté intérieur, d'un complexe "
+      "isolant (isolant et plaque de plâtre : l'isolation intérieure du cours) : " + calc("32 − 20 = 12 cm") + "</p>"),
+    GRP("Quelle est la dimension du trumeau entre la baie de la chambre 1 et celle de la chambre 2 (DT3) ?",
+        "En cm, puis en m.", [("Trumeau (cm)", LU(160), "160"), ("Trumeau (m)", LU(1.6), "1,60")],
+        "<p>Sur la façade ouest de l'étage, la chaîne de cotes indique 100 | 120/125 | <b>160</b> | 120/125 | 100 : "
+        "entre les deux baies, il reste 160 cm de mur, soit 1,60 m.</p>"),
+    Q("Quelle est la dimension du trumeau entre les baies de la cuisine et du salon séjour (DT2) ? Précise l'unité.",
+      "Une valeur et son unité.", NUM(305, "cm", variantes=[(3.05, "m"), (3050, "mm")], tol=1e-6, rel=0),
+      "305 cm, soit 3,05 m ou 3 050 mm",
+      "<p>Sur la façade sud (côté gauche du plan), la chaîne de cotes indique 230 | 120/215 | <b>305</b> | 120/215 | "
+      "125 : 305 cm séparent la porte-fenêtre du séjour de celle de la cuisine.</p>"),
+]})
+
+# ------------------------------------------------------------ Partie 3 : les pièces
+PARTS_LP.append({"title": "Les pièces de la maison", "minutes": 10, "intro": [
+    "<p>Les dimensions intérieures des pièces se lisent sur les plans, entre les faces des murs et des cloisons.</p>"],
+    "blocks": [
+    QBAR(["DT2"]),
+    GRP("Relève les dimensions intérieures de ces pièces (DT2), en mètres.", "La longueur est la plus grande des deux "
+        "dimensions.", [
+        ("Hall — longueur (m)", LU(3.5), "3,50"), ("Hall — largeur (m)", LU(1.5), "1,50"),
+        ("Chambre 4 — longueur (m)", LU(4.58), "4,58"), ("Chambre 4 — largeur (m)", LU(3.03), "3,03"),
+        ("Garage — longueur (m)", LU(5), "5,00"), ("Garage — largeur (m)", LU(3.1), "3,10")],
+        "<ul><li><b>Hall</b> : 350 × 150 cm, soit 3,50 m × 1,50 m.</li><li><b>Chambre 4</b> : 458 × 303 cm, soit "
+        "4,58 m × 3,03 m.</li><li><b>Garage</b> : 500 × 310 cm, soit 5,00 m × 3,10 m.</li></ul>"),
+    Q("Calcule la surface de la chambre 4.", "Surface = longueur × largeur ; résultat en m², au centième.",
+      NUM(13.88, "m²", accepte=("m2",), tol=0.01, rel=0), "13,88 m²",
+      "<p>" + calc("S = 4,58 × 3,03 = 13,88 m²") + " C'est une surface habitable : celle dont on dispose une fois "
+      "les murs et les cloisons construits.</p>"),
+    GRP("Classe ces pièces pour la ventilation (partie 3 du cours).", "Pièce principale : on y vit et l'air neuf y "
+        "entre ; pièce de service : l'air vicié y est extrait.", [
+        ("Salon séjour", PRINCIPALE, "Pièce principale"), ("Chambre 4", PRINCIPALE, "Pièce principale"),
+        ("Cuisine", SERVICE, "Pièce de service"), ("Douche", SERVICE, "Pièce de service"),
+        ("WC", SERVICE, "Pièce de service"), ("Hall", KW(P("circulation")), "Circulation")],
+        "<p>La VMC fait entrer l'air neuf dans les <b>pièces principales</b> (séjour, chambres) et extrait l'air vicié "
+        "des <b>pièces de service</b> (cuisine, salle d'eau, WC). Le hall est une <b>circulation</b> : l'air le "
+        "traverse en passant sous les portes.</p>", etiquettes=E_PIECES, liste="Pièces"),
+]})
+
+# ------------------------------------------------------------ Partie 4 : la coupe, hauteurs et niveaux
+PARTS_LP.append({"title": "Lire la coupe : hauteurs et niveaux", "minutes": 15, "intro": [
+    "<p>La coupe transversale (DT4) montre la maison tranchée par un plan vertical : on y lit les hauteurs, en "
+    "centimètres, et les <b>cotes de niveau</b>, en mètres, par rapport au sol fini du rez-de-chaussée (0,00).</p>"],
+    "plan": dict(plans.baie(), caption="Figure 1 — Coupe verticale d'une pièce, mur de façade vu de l'intérieur : "
+                 "les 6 cases repérées en rouge reçoivent les étiquettes."),
+    "blocks": [
+    QBAR(["DP2"], "sur la figure 1"),
+    GRP("Nomme ce que mesure chaque cote de la figure 1.", "Une étiquette par case ; deux étiquettes ne servent pas.", [
+        ("Repère 1", KW(P("plafond")), "Hauteur sous plafond"), ("Repère 2", KW(P("retombee")), "Retombée de linteau"),
+        ("Repère 3", KW(P("baie"), forbid="largeur"), "Hauteur de la baie"), ("Repère 4", KW(P("allege")), "Allège"),
+        ("Repère 5", KW(P("trumeau")), "Trumeau"), ("Repère 6", KW(P("niveau")), "Cote de niveau")],
+        "<ul><li><b>1</b> : du sol fini au plafond, la <b>hauteur sous plafond</b>.</li><li><b>2</b> : du haut de la "
+        "baie au plafond, la <b>retombée de linteau</b>.</li><li><b>3</b> : la <b>hauteur de la baie</b>.</li>"
+        "<li><b>4</b> : du sol fini au bas de la baie, l'<b>allège</b>.</li><li><b>5</b> : le mur entre deux baies, "
+        "le <b>trumeau</b>.</li><li><b>6</b> : l'altitude du sol fini, la <b>cote de niveau</b> (0,00).</li></ul>"
+        "<p>La chaîne de cotes de gauche le montre : hauteur sous plafond = allège + hauteur de la baie + retombée de "
+        "linteau.</p>", etiquettes=E_VOCAB, liste="Vocabulaire", zones=["1", "2", "3", "4", "5", "6"]),
+    QBAR(["DT4"]),
+    GRP("Quelle est la hauteur sous plafond de la chambre 1 ?", "En mètres, puis en millimètres.", [
+        ("Hauteur sous plafond (m)", LU(2.45), "2,45"), ("Hauteur sous plafond (mm)", LU(2450), "2450")],
+        "<p>Sous la chambre 1, la coupe empile l'allège, la baie et la retombée de linteau : "
+        + calc("0,90 + 1,25 + 0,30 = 2,45 m") + " soit 2 450 mm (× 1 000). La coupe l'écrit aussi : « 245 "
+        "minimum ».</p>"),
+    Q("Quelle est la hauteur d'allège de la chambre 1 ?", "Une valeur et son unité.",
+      NUM(90, "cm", variantes=[(0.9, "m"), (900, "mm")], tol=1e-6, rel=0), "90 cm, soit 0,90 m",
+      "<p>La première cote au-dessus du plancher de la chambre 1 est <b>90</b> : l'allège mesure 90 cm, du sol fini "
+      "au bas de la baie.</p>"),
+    GRP("Quelle est la retombée de linteau de la chambre 1 ?", "En mètres, puis en millimètres.", [
+        ("Retombée (m)", LU(0.3), "0,30"), ("Retombée (mm)", LU(300), "300")],
+        "<p>Au-dessus de la baie de la chambre 1, la coupe indique <b>30</b> : 30 cm = 0,30 m = 300 mm.</p>"),
+    Q("Quelle est la cote de niveau du sol fini du garage ?", "En mètres, avec son signe, comme sur la coupe.",
+      LU(-0.6), "−0,60",
+      "<p>Le symbole de niveau du garage indique <b>−0,60</b> : son sol fini est 60 cm plus bas que celui de "
+      "l'habitation (0,00).</p>"),
+    Q("Quelle est la pente du toit ?", "En pourcentage.", LU(33), "33 %",
+      "<p>La coupe l'indique : <b>pente 33 %</b>, soit 33 cm de hauteur pour 1 m à l'horizontale. Une faible pente "
+      "convient aux tuiles romanes.</p>"),
+]})
+
+# ------------------------------------------------------------ Partie 5 : l'escalier
+PARTS_LP.append({"title": "L'escalier", "minutes": 5, "intro": [
+    "<p>L'escalier relie le hall du rez-de-chaussée (DT2) au dégagement de l'étage (DT3) : le plan de l'étage le "
+    "montre en entier.</p>"],
+    "blocks": [
+    QBAR(["DP2", "DT3", "DT4"]),
+    Q("Combien de marches compte l'escalier ?", "Sur le plan de l'étage (DT3), compte les nez de marche : la volée "
+      "droite, le bord du palier d'arrivée et les marches balancées qui tournent au départ.", LU(14), "14 marches",
+      "<p>On compte <b>11</b> traits dans la volée droite (le dernier est le bord du palier d'arrivée) et <b>3</b> "
+      "marches balancées au départ, côté hall : " + calc("11 + 3 = 14 marches") + "</p>"),
+    Q("Calcule la hauteur à franchir entre le rez-de-chaussée et l'étage, sachant que l'épaisseur du plancher haut du "
+      "rez-de-chaussée est de 15 cm.", "Hauteur sous plafond du rez-de-chaussée (DT4) + épaisseur du plancher ; une "
+      "valeur et son unité.", NUM(2.6, "m", variantes=[(260, "cm"), (2600, "mm")], tol=1e-6, rel=0),
+      "2,60 m, soit 260 cm",
+      "<p>La hauteur sous plafond du rez-de-chaussée est de 2,45 m (« 245 minimum » sur la coupe) : "
+      + calc("2,45 + 0,15 = 2,60 m") + "</p>"),
+    Q("Calcule la hauteur d'une marche, au dixième de millimètre.", "Hauteur à franchir ÷ nombre de marches ; résultat "
+      "en mm.", NUM(185.7, "mm", variantes=[(18.57, "cm")], tol=0.051, rel=0), "185,7 mm",
+      "<p>" + calc("2 600 ÷ 14 = 185,7 mm") + " Toutes les marches ont la même hauteur : c'est ce qui rend un "
+      "escalier confortable.</p>"),
+]})
+
+# ------------------------------------------------------------ Partie 6 : le pavillon et l'architecture bioclimatique
+PARTS_LP.append({"title": "Le pavillon est-il bioclimatique ?", "minutes": 5, "intro": [
+    "<p>Compare le pavillon aux principes de l'architecture bioclimatique (partie 1 du cours) : pièces de vie au sud, "
+    "façade nord protégée, espaces tampons au nord.</p>"],
+    "blocks": [
+    QBAR(["DT1", "DT2", "DT3"]),
+    Q("Quelle façade ne comporte aucune ouverture ?", "Un point cardinal.", KW(P("nord")), "La façade nord",
+      "<p>Le côté droit des plans, au <b>nord</b>, n'a ni porte ni fenêtre, au rez-de-chaussée comme à l'étage : "
+      "la façade nord est fermée, comme le recommande l'architecture bioclimatique.</p>"),
+    Q("Quel local non chauffé, placé au nord, sert d'espace tampon ?", "Un nom de local.", KW(P("garage")),
+      "Le garage",
+      "<p>Le <b>garage</b>, au nord-est, n'est pas chauffé (ses murs ne sont pas isolés) : il protège la chambre 4 et "
+      "le hall du froid.</p>"),
+    Q("Sur quelle façade le salon séjour et la cuisine ont-ils tous deux une porte-fenêtre ?", "Un point cardinal.",
+      KW(P("sud")), "Sud",
+      "<p>Le séjour et la cuisine ont chacun une porte-fenêtre au <b>sud</b> (façade B) : les pièces de vie profitent "
+      "de la lumière et des apports solaires.</p>"),
+]})
+
+
+# ============================================================ EXERCICE 1.2 — ISOLER UNE PAROI
+# La partie 2 du cours (conductivité, résistance, coefficient U, déperdition) appliquée au mur de la partie habitation
+# du pavillon de l'exercice 1.1. Composition du mur (hypothèse, DT2) : 1 + 10 + 20 + 1 = 32 cm, la cote du plan.
+E_ISOLANT = ["Isolant", "Non isolant"]
+E_RANG = ["Polystyrène expansé", "Laine de bois", "Ossature bois", "Parpaing creux"]
+E_PAROI = ["Intérieur : pièce chauffée", "Plaque de plâtre", "Polystyrène expansé", "Parpaing creux", "Enduit",
+           "Extérieur : air froid", "Laine de bois", "Pare-vapeur", "Lame d'air"]
+E_PROCEDE = ["Isolation par l'intérieur (ITI)", "Isolation par l'extérieur (ITE)"]
+ISOLANT, NON_ISOLANT = KW(P("isolant"), forbid="non"), KW(P("non"))
+
+
+def EPAIS(v, tol=1e-6):
+    """Une épaisseur en centimètres, juste aussi en mètres ou en millimètres (unité alors obligatoire)."""
+    return NUM(v, "cm", variantes=[(v / 100, "m"), (v * 10, "mm")], tol=tol, rel=0)
+
+
+PARTS_IP = []
+
+# ------------------------------------------------------------ Partie 1 : les matériaux
+PARTS_IP.append({"title": "Les matériaux du mur", "minutes": 10, "intro": [
+    "<p>Chaque matériau conduit plus ou moins bien la chaleur : c'est sa <b>conductivité thermique λ</b>, en "
+    "W/(m·K). Plus λ est faible, plus le matériau est isolant. Les fiches matériaux (DT1) donnent λ pour les "
+    "matériaux du cours.</p>"],
+    "blocks": [
+    QBAR(["DT1"]),
+    GRP("Ce matériau est-il un isolant thermique ?", "Un matériau est appelé isolant thermique quand sa conductivité est "
+        "inférieure à 0,065 W/(m·K) (DT1).", [
+        ("Parpaing creux", NON_ISOLANT, "Non isolant"), ("Polystyrène expansé", ISOLANT, "Isolant"),
+        ("Brique Monomur", NON_ISOLANT, "Non isolant"), ("Laine de bois", ISOLANT, "Isolant"),
+        ("Plaque de plâtre", NON_ISOLANT, "Non isolant"), ("Laine de verre", ISOLANT, "Isolant")],
+        "<p>Seuls le polystyrène expansé (λ = 0,032), la laine de verre (0,035) et la laine de bois (0,038) sont sous "
+        "0,065 W/(m·K) : ce sont des <b>isolants</b>. La brique Monomur (0,13) isole sept fois mieux que le parpaing "
+        "(0,95), mais elle reste un matériau de <b>structure</b> : elle porte la maison, sans être un isolant. La plaque "
+        "de plâtre (0,25) sert de parement.</p>", etiquettes=E_ISOLANT, liste="Isolant ?"),
+    GRP("Range ces quatre matériaux, du plus isolant au moins isolant : polystyrène expansé, laine de bois, ossature "
+        "bois, parpaing creux.", "Compare leurs conductivités λ (DT1).", [
+        ("1<sup>er</sup> : le plus isolant", KW(P("polystyrene")), "Polystyrène expansé"),
+        ("2<sup>e</sup>", KW(P("laine", "bois")), "Laine de bois"),
+        ("3<sup>e</sup>", KW(P("ossature")), "Ossature bois"),
+        ("4<sup>e</sup> : le moins isolant", KW(P("parpaing")), "Parpaing creux")],
+        "<p>Plus λ est faible, plus le matériau est isolant : polystyrène expansé (0,032) &lt; laine de bois (0,038) "
+        "&lt; ossature bois (0,12) &lt; parpaing creux (0,95).</p>", etiquettes=E_RANG, liste="Matériaux"),
+    Q("Combien de fois le parpaing creux conduit-il mieux la chaleur que le polystyrène expansé ?",
+      "Rapport des deux conductivités, arrondi à l'unité.", NUM(29.7, tol=0.8, rel=0), "Environ 30 fois",
+      "<p>" + calc("0,95 ÷ 0,032 ≈ 29,7") + " Le parpaing conduit la chaleur environ <b>30 fois</b> mieux que le "
+      "polystyrène : il porte la maison, l'isolant la protège du froid.</p>"),
+]})
+
+# ------------------------------------------------------------ Partie 2 : la paroi en coupe
+PARTS_IP.append({"title": "Le mur en coupe", "minutes": 10, "intro": [
+    "<p>Le mur de la partie habitation du pavillon mesure 32 cm sur le plan (DT3). Le DT2 donne sa composition, de "
+    "l'intérieur vers l'extérieur. La figure 1 le montre en coupe horizontale, vu de dessus, avec l'allure de la "
+    "température dans son épaisseur.</p>"],
+    "plan": dict(plans.paroi(), caption="Figure 1 — Coupe horizontale du mur de la partie habitation et température "
+                 "dans son épaisseur, un jour d'hiver : les 6 cases repérées en rouge reçoivent les étiquettes."),
+    "blocks": [
+    QBAR(["DT2"], "sur la figure 1"),
+    GRP("Nomme chaque couche du mur et chaque côté de la figure 1.", "Une étiquette par case ; trois étiquettes ne "
+        "servent pas.", [
+        ("Repère 1", KW(P("chauffee")), "Intérieur : pièce chauffée"), ("Repère 2", KW(P("platre")), "Plaque de plâtre"),
+        ("Repère 3", KW(P("polystyrene")), "Polystyrène expansé"), ("Repère 4", KW(P("parpaing")), "Parpaing creux"),
+        ("Repère 5", KW(P("enduit")), "Enduit"), ("Repère 6", KW(P("froid")), "Extérieur : air froid")],
+        "<p>À gauche, la <b>pièce chauffée</b> (19 °C) ; puis la <b>plaque de plâtre</b> (1 cm), le <b>polystyrène "
+        "expansé</b> (10 cm, les billes), le <b>parpaing creux</b> (20 cm, ses alvéoles) et l'<b>enduit</b> (1 cm) ; "
+        "à droite, l'<b>air extérieur</b> (−5 °C). La plaque de plâtre et le polystyrène forment le complexe de "
+        "doublage, collé contre le parpaing.</p>", etiquettes=E_PAROI, liste="Couches et côtés",
+        zones=["1", "2", "3", "4", "5", "6"]),
+    GRP("Quel procédé d'isolation ce mur utilise-t-il ?", "Regarde de quel côté du parpaing se trouve l'isolant.", [
+        ("Procédé", KW(P("iti")), "Isolation par l'intérieur (ITI)")],
+        "<p>L'isolant est posé contre la face intérieure du mur porteur : c'est une <b>isolation par l'intérieur</b>, "
+        "facile et rapide à mettre en œuvre (figure 3 du cours).</p>", etiquettes=E_PROCEDE, liste="Procédés"),
+    Q("Avec ce procédé, l'isolation est-elle interrompue là où les planchers et les murs de refend rejoignent la "
+      "façade ?", "Réponds par oui ou non.", OUI_NON(True), "Oui : ce sont des ponts thermiques",
+      "<p><b>Oui.</b> Le plancher et les murs de refend touchent directement le mur porteur : l'isolant intérieur "
+      "s'arrête à leur niveau. Ces <b>ponts thermiques</b> laissent passer la chaleur ; l'isolation par l'extérieur "
+      "les supprime, car l'isolant enveloppe tout le mur.</p>"),
+    Q("Dans quelle couche la température chute-t-elle le plus ?", "Observe la courbe rouge de la figure 1.",
+      KW(P("polystyrene|isolant")), "Le polystyrène expansé (l'isolant)",
+      "<p>La courbe tombe de près de 19 °C à environ −3,4 °C dans le <b>polystyrène expansé</b> : l'isolant freine "
+      "le passage de la chaleur, c'est lui qui « tient » l'écart de température. Dans le parpaing, elle ne baisse "
+      "plus que d'un degré et demi.</p>"),
+    Q("Calcule l'épaisseur totale du mur.", "Additionne les épaisseurs du DT2 ; une valeur et son unité.", EPAIS(32),
+      "32 cm", "<p>" + calc("1 + 10 + 20 + 1 = 32 cm") + " On retrouve la cote des murs de la partie habitation sur le "
+      "plan du rez-de-chaussée (DT3).</p>"),
+]})
+
+# ------------------------------------------------------------ Partie 3 : résistance, coefficient U, déperdition
+PARTS_IP.append({"title": "Résistance, coefficient U et déperdition", "minutes": 15, "intro": [
+    "<p>Les formules du cours (rappelées en DT1) : <b>R = e / λ</b> pour une couche, avec l'épaisseur e en "
+    "<b>mètres</b> ; <b>R<sub>totale</sub> = R<sub>1</sub> + R<sub>2</sub> + …</b> ; <b>U = 1 / R<sub>totale</sub></b> "
+    "et <b>D = U × S</b>.</p>"],
+    "blocks": [
+    QBAR(["DT1", "DT2"]),
+    GRP("Calcule la résistance thermique de chaque couche du mur.", "R = e / λ, avec e en mètres ; résultats en "
+        "m²·K/W, au centième.", [
+        ("Plaque de plâtre : R<sub>1</sub> (m²·K/W)", NUM(0.04, tol=0.0005, rel=0), "0,04"),
+        ("Polystyrène expansé : R<sub>2</sub> (m²·K/W)", NUM(3.125, tol=0.006, rel=0), "3,125, soit 3,13"),
+        ("Parpaing creux : R<sub>3</sub> (m²·K/W)", NUM(0.2105, tol=0.006, rel=0), "0,21"),
+        ("Enduit : R<sub>4</sub> (m²·K/W)", NUM(0.01, tol=0.0005, rel=0), "0,01")],
+        "<ul><li>Plaque de plâtre : " + calc("R₁ = 0,01 / 0,25 = 0,04 m²·K/W") + "</li><li>Polystyrène expansé : "
+        + calc("R₂ = 0,10 / 0,032 = 3,125 m²·K/W") + "</li><li>Parpaing creux : " + calc("R₃ = 0,20 / 0,95 ≈ 0,21 "
+        "m²·K/W") + "</li><li>Enduit : " + calc("R₄ = 0,01 / 1 = 0,01 m²·K/W") + "</li></ul><p>Attention à l'unité : "
+        "10 cm = 0,10 m. Avec e en centimètres, on trouverait des résistances cent fois trop grandes.</p>"),
+    Q("Calcule la résistance thermique totale du mur.", "Une valeur et son unité.",
+      NUM(3.3855, "m²·K/W", tol=0.01, rel=0), "3,39 m²·K/W",
+      "<p>" + calc("R = 0,04 + 3,125 + 0,21 + 0,01 ≈ 3,39 m²·K/W") + " Le polystyrène apporte à lui seul plus de "
+      "92 % de la résistance du mur.</p>"),
+    Q("Calcule le coefficient de transfert thermique U du mur.", "Une valeur et son unité, au centième.",
+      NUM(0.2954, "W/(m²·K)", tol=0.006, rel=0), "0,30 W/(m²·K)",
+      "<p>" + calc("U = 1 / R = 1 / 3,39 ≈ 0,30 W/(m²·K)") + " Chaque mètre carré de mur laisse passer 0,30 W par "
+      "degré d'écart entre l'intérieur et l'extérieur.</p>"),
+    Q("Calcule la déperdition thermique D du pan de mur étudié (DT2).", "Une valeur et son unité.",
+      NUM(7.385, "W/K", tol=0.15, rel=0), "7,4 W/K",
+      "<p>Le pan de mur mesure 25 m² : " + calc("D = U × S = 0,295 × 25 ≈ 7,4 W/K") + "</p>"),
+    Q("Calcule la puissance perdue par ce pan de mur quand il fait 19 °C dans la maison et −5 °C dehors.",
+      "P = D × (température intérieure − température extérieure) ; une valeur et son unité.",
+      NUM(177, "W", tol=5, rel=0), "Environ 177 W",
+      "<p>L'écart de température est de 19 − (−5) = 24 K : " + calc("P = 7,4 × 24 ≈ 177 W") + " Pour toute la "
+      "maison, on additionne les pertes de toutes les parois (murs, toiture, plancher bas, baies) et celles du "
+      "renouvellement d'air.</p>"),
+]})
+
+# ------------------------------------------------------------ Partie 4 : comparer et choisir
+PARTS_IP.append({"title": "Comparer et choisir", "minutes": 10, "intro": [
+    "<p>Que vaudrait ce mur sans son isolant ? Et quelle épaisseur d'isolant choisir pour faire mieux ?</p>"],
+    "blocks": [
+    QBAR(["DT1", "DT2"]),
+    Q("Calcule la résistance thermique totale du même mur sans polystyrène (plaque de plâtre collée sur le parpaing).",
+      "Une valeur et son unité.", NUM(0.2605, "m²·K/W", tol=0.006, rel=0), "0,26 m²·K/W",
+      "<p>" + calc("R = 0,04 + 0,21 + 0,01 = 0,26 m²·K/W") + " Sans isolant, le mur résiste treize fois moins.</p>"),
+    Q("Calcule la déperdition D de ce mur non isolé, pour les mêmes 25 m².", "Une valeur et son unité.",
+      NUM(96, "W/K", tol=1.5, rel=0), "96 W/K",
+      "<p>" + calc("U = 1 / 0,26 ≈ 3,84 W/(m²·K)") + " puis " + calc("D = 3,84 × 25 ≈ 96 W/K") + "</p>"),
+    Q("Combien de fois le mur isolé perd-il moins de chaleur que le mur non isolé ?", "Rapport des deux "
+      "déperditions, arrondi à l'unité.", NUM(13, tol=0.6, rel=0), "Environ 13 fois",
+      "<p>" + calc("96 ÷ 7,4 ≈ 13") + " Dix centimètres de polystyrène divisent les pertes du mur par 13.</p>"),
+    Q("Quelle épaisseur de polystyrène expansé donne, à elle seule, une résistance R = 4 m²·K/W ?",
+      "e = R × λ ; une valeur et son unité.", EPAIS(12.8, tol=0.05), "12,8 cm, soit 0,128 m",
+      "<p>" + calc("e = R × λ = 4 × 0,032 = 0,128 m = 12,8 cm") + "</p>"),
+    Q("Quelle épaisseur commerciale de polystyrène faut-il alors choisir ?", "Parmi les épaisseurs vendues (DT1) ; une "
+      "valeur et son unité.", EPAIS(14), "14 cm",
+      "<p>12 cm ne suffisent pas (R = 0,12 / 0,032 = 3,75 m²·K/W) : on choisit l'épaisseur vendue juste au-dessus, "
+      "<b>14 cm</b> (R ≈ 4,4 m²·K/W).</p>"),
+    Q("Quelle épaisseur de parpaing creux faudrait-il pour obtenir la même résistance R = 4 m²·K/W ?",
+      "e = R × λ ; une valeur et son unité.", NUM(3.8, "m", variantes=[(380, "cm"), (3800, "mm")], tol=0.01, rel=0),
+      "3,80 m",
+      "<p>" + calc("e = 4 × 0,95 = 3,80 m") + " Un mur de presque 4 m d'épaisseur ! Le mur porteur tient la maison, "
+      "l'isolant la protège du froid : chaque matériau a son rôle.</p>"),
+]})
+
+# ============================================================ QCM 1.3 — LA MAISON RE2020
+# Révision de tout le cours 1, partie par partie ; les figures sont celles du cours (écrites une fois dans la page).
+F_ITE = ("ch-fig04-isolation-exterieure", "Isolation extérieure enduite, isolation extérieure à bardage et toiture "
+         "végétalisée, couche par couche", 620)
+F_ETANCHE = ("ch-test-etancheite", "Test d'étanchéité : une porte soufflante munie d'un ventilateur et d'un capteur "
+             "est posée dans l'encadrement de la porte d'entrée", 340)
+F_VMC_SF = ("ch-fig07-vmc-simple-flux", "VMC simple flux : l'air neuf entre par les fenêtres du séjour et des "
+            "chambres, l'air vicié est aspiré dans la cuisine, la salle de bains et les WC", 520)
+F_VMC_DF = ("ch-fig08-vmc-double-flux", "VMC double flux : un caisson avec échangeur aspire l'air vicié et insuffle "
+            "l'air neuf réchauffé dans les pièces principales", 520)
+F_PUITS = ("ch-fig09-puits-canadien", "Puits canadien : bouche d'entrée d'air neuf avec filtre, conduit enterré de 1,5 "
+           "à 3 m, couplé à la ventilation", 560)
+F_SSC = ("ch-fig10-solaire-combine", "Système solaire combiné : capteurs solaires thermiques, groupe de transfert, "
+         "ballon tampon avec ballon d'eau chaude sanitaire intégré, chauffage par radiateurs ou plancher chauffant", 520)
+F_CET = ("ch-chauffe-eau-thermo", "Chauffe-eau thermodynamique : ventilateur, évaporateur, compresseur, condenseur, "
+         "détendeur, chauffage d'appoint ; air aspiré, air rejeté", 340)
+F_BOIS = ("ch-fig13-combustibles", "Énergie fournie par type de combustible : bûches, plaquettes, écorces, granulés, "
+          "fioul", 520)
+F_PROG = ("ch-fig16-programmateur", "Programmateur : capteurs de température, consigne, programmation ; il commande "
+          "les émetteurs de chaleur par TOR, radio, fil pilote ou CPL", 620)
+F_DOMO = ("ch-fig17-domotique", "Fonctions de la domotique : contrôle de l'énergie, confort de vie, protection du "
+          "domicile, protection de la personne, interaction à distance", 460)
+F_PV = ("ch-fig18-photovoltaique", "Le rayonnement solaire arrive sur un module photovoltaïque, qui produit de "
+        "l'électricité pour une lampe", 520)
+F_ISOLE = ("ch-fig19-site-isole", "Site isolé : modules PV, régulateur de charge, accumulateur, onduleur ; récepteur "
+           "DC et récepteur AC", 560)
+F_RESEAU = ("ch-fig20-reseau", "Installation couplée au réseau : modules PV, onduleur, compteurs de production et de "
+            "non-consommation, compteur de consommation, réseau", 620)
+
+PARTS_QCM = [
+    qcm.partie("Architecture bioclimatique", 6, [
+        qcm.QCM("Depuis quand les maisons neuves doivent-elles respecter la réglementation environnementale RE2020 ?",
+                ["Depuis le 1er janvier 2012", "Depuis le 1er janvier 2022", "À partir du 1er janvier 2030"], "b",
+                "La RE2020 s'applique aux maisons neuves depuis le 1er janvier 2022 ; elle a remplacé la RT2012."),
+        qcm.QCM("Dans une maison bioclimatique, de quel côté place-t-on les pièces de vie (séjour, salle à manger) ?",
+                ["Au nord", "Au sud", "À l'est", "À l'ouest"], "b",
+                "Au sud, les pièces de vie, largement vitrées, profitent de la lumière naturelle et des apports solaires."),
+        qcm.QCM("Quels locaux peuvent servir d'espaces tampons au nord de la maison ?",
+                ["Le garage", "Le cellier", "Le salon séjour", "Le couloir", "La chambre"], ["a", "b", "d"],
+                "Les pièces peu chauffées (garage, cellier, couloir…) placées au nord protègent les pièces chauffées du "
+                "froid : elles renforcent l'isolation."),
+        qcm.QCM("Comment est conçue la façade nord d'une maison bioclimatique ?",
+                ["Avec de grandes baies vitrées, pour l'éclairage", "Protégée des vents dominants, avec peu d'ouvertures",
+                 "Avec les chambres, pour la fraîcheur"], "b",
+                "La façade nord, qui ne reçoit pas de soleil, est protégée des vents dominants ; elle a peu d'ouvertures "
+                "et donne sur des espaces tampons."),
+        qcm.QCM("Pourquoi place-t-on de préférence les chambres à l'est ?",
+                ["Pour le soleil du matin et la fraîcheur du soir", "Pour le soleil couchant",
+                 "Parce que l'est ne reçoit jamais de soleil"], "a",
+                "À l'est, les chambres reçoivent le soleil du matin et restent fraîches le soir, au coucher."),
+        qcm.QCM("À quoi servent les brise-soleil placés au-dessus des baies du sud ?",
+                ["À éviter les surchauffes en été", "À capter davantage de soleil en hiver",
+                 "À protéger la maison des vents du nord"], "a",
+                "En été, le soleil de midi est haut (environ 67°) : le brise-soleil arrête ses rayons. En hiver, il est "
+                "bas (environ 21°) : ses rayons passent dessous et entrent loin dans la pièce."),
+    ]),
+    qcm.partie("Déperditions et isolation", 10, [
+        qcm.QCM("D'après la figure 2 du cours, quelle part des déperditions d'une maison passe par la toiture ?",
+                ["Environ 10 %", "Environ 15 %", "Environ 30 %", "Environ 50 %"], "c",
+                "Toiture et murs (avec les ponts thermiques) : environ 30 % chacun ; air renouvelé 20 %, fenêtres 15 %, "
+                "plancher bas 10 %. L'air chaud monte : la toiture est la première paroi à isoler."),
+        qcm.QCM("Pour une même surface habitable, quelle maison est la plus compacte ?",
+                ["La maison de plain-pied", "La maison à étage", "Elles sont aussi compactes l'une que l'autre"], "b",
+                "À surface égale, la maison à étage a deux fois moins de toiture et de plancher bas : moins de parois "
+                "déperditives pour le même volume chauffé, donc un facteur C = Sp / V plus faible."),
+        qcm.QCM("Une maison a 300 m² de parois déperditives pour 250 m³ chauffés. Son facteur de compacité C vaut :",
+                ["0,83 m²/m³", "1,2 m²/m³", "550 m²/m³"], "b", "C = Sp / V = 300 / 250 = 1,2 m²/m³."),
+        qcm.QCM("Lequel de ces matériaux est le plus isolant ?",
+                ["Parpaing (λ = 0,95 W/(m·K))", "Brique Monomur (λ = 0,13 W/(m·K))", "Terre crue (λ = 0,6 à 1 W/(m·K))",
+                 "Polystyrène expansé (λ = 0,032 W/(m·K))"], "d",
+                "Plus la conductivité thermique λ est faible, plus le matériau est isolant."),
+        qcm.QCM("Une plaque d'isolant de 5 cm a une conductivité λ = 0,04 W/(m·K). Sa résistance thermique R vaut :",
+                ["0,8 m²·K/W", "1,25 m²·K/W", "2 m²·K/W", "125 m²·K/W"], "b",
+                "R = e / λ = 0,05 / 0,04 = 1,25 m²·K/W, l'épaisseur étant en mètres : avec e en centimètres, on "
+                "trouverait 125, cent fois trop."),
+        qcm.QCM("Une paroi a trois couches de résistances 0,05 ; 2,50 et 0,20 m²·K/W. Sa résistance totale vaut :",
+                ["0,92 m²·K/W", "2,50 m²·K/W", "2,75 m²·K/W"], "c",
+                "Les résistances des couches s'additionnent : 0,05 + 2,50 + 0,20 = 2,75 m²·K/W."),
+        qcm.QCM("Un mur de 40 m² a un coefficient U = 0,25 W/(m²·K). Sa déperdition thermique D vaut :",
+                ["0,006 W/K", "10 W/K", "160 W/K"], "b", "D = U × S = 0,25 × 40 = 10 W/K."),
+        qcm.QCM("Quel est l'avantage principal de l'isolation par l'extérieur, montrée sur ces exemples ?",
+                ["Elle supprime les ponts thermiques", "Elle est la plus simple et la plus rapide à poser",
+                 "Elle se pose sans toucher aux façades"], "a",
+                "L'isolant enveloppe tout le mur, jonctions avec les planchers comprises : l'isolation n'est plus "
+                "interrompue, les ponts thermiques disparaissent. C'est l'isolation intérieure qui est la plus simple à "
+                "mettre en œuvre.", img=F_ITE),
+        qcm.QCM("Quel vitrage a le coefficient de transfert thermique Uw le plus faible ?",
+                ["Simple vitrage", "Double vitrage standard", "Double vitrage performant (VIR, argon)",
+                 "Triple vitrage (argon)"], "d",
+                "Uw vaut environ 5 pour le simple vitrage, 3 pour le double standard, 1,5 pour le double VIR et 0,7 "
+                "W/(m²·K) pour le triple vitrage : plus Uw est faible, moins la fenêtre perd de chaleur."),
+        qcm.QCM("Quelle surface vitrée recommande-t-on pour une maison ?",
+                ["5 à 8 % de la surface habitable", "16 à 18 % de la surface habitable",
+                 "30 à 35 % de la surface habitable"], "b",
+                "16 à 18 % de la surface habitable, réparties à 50 % au sud, 20 à 30 % à l'est, 20 % à l'ouest et 0 à "
+                "10 % au nord."),
+        qcm.QCM("Dans les 123 logements testés, quel est le premier point faible de l'étanchéité à l'air ?",
+                ["Les menuiseries extérieures", "Les trappes", "La structure du bâtiment"], "a",
+                "Menuiseries extérieures 41 %, passages des équipements électriques 38 %, trappes 12 %, tuyauteries "
+                "7 %, structure du bâtiment 2 %.", img=F_ETANCHE),
+    ]),
+    qcm.partie("Renouveler l'air", 7, [
+        qcm.QCM("Pourquoi faut-il ventiler une maison bien isolée et étanche à l'air ?",
+                ["Pour apporter l'air neuf et l'oxygène dont nous avons besoin",
+                 "Pour éliminer l'humidité et les pollutions intérieures",
+                 "Pour apporter l'oxygène nécessaire aux appareils à combustion", "Pour refroidir les murs en hiver"],
+                ["a", "b", "c"],
+                "Une maison étanche ne renouvelle plus son air par ses fuites : la ventilation apporte l'oxygène, "
+                "évacue l'humidité et les polluants, et alimente les appareils à combustion."),
+        qcm.QCM("Dans une VMC simple flux, d'où l'air vicié est-il extrait ?",
+                ["Des pièces principales (séjour, chambres)", "Des pièces de service (cuisine, salle de bains, WC)",
+                 "Du garage"], "b",
+                "Les bouches d'extraction sont dans les pièces de service, où naissent l'humidité et les odeurs.",
+                img=F_VMC_SF),
+        qcm.QCM("Dans une VMC simple flux, par où l'air neuf entre-t-il ?",
+                ["Par des entrées d'air au-dessus des fenêtres des pièces principales",
+                 "Par les bouches d'extraction de la cuisine", "Par un échangeur placé dans les combles"], "a",
+                "L'air neuf entre par les ouvertures au-dessus des fenêtres du séjour et des chambres, traverse la "
+                "maison et sort par les pièces de service."),
+        qcm.QCM("Qu'est-ce que la VMC double flux ajoute à la VMC simple flux ?",
+                ["Un échangeur, qui réchauffe l'air neuf avec la chaleur de l'air extrait",
+                 "L'extraction de l'air vicié dans les pièces de service", "Des entrées d'air au-dessus des fenêtres"],
+                "a",
+                "Les deux VMC extraient l'air vicié des pièces de service. La double flux aspire aussi l'air neuf "
+                "dehors et le réchauffe dans un échangeur avant de l'insuffler dans les pièces principales : il n'y a "
+                "plus d'entrées d'air aux fenêtres.", img=F_VMC_DF),
+        qcm.QCM("Pourquoi laisse-t-on un espace sous les portes intérieures ?",
+                ["Pour que l'air circule des pièces principales vers les pièces de service",
+                 "Pour faire passer les câbles électriques", "Pour éviter que les portes frottent sur le parquet"], "a",
+                "L'air neuf entre dans les pièces principales et doit rejoindre les bouches d'extraction des pièces de "
+                "service : il passe sous les portes."),
+        qcm.QCM("À 1,5 à 3 m de profondeur, quelle est la température du sol, quelle que soit la saison ?",
+                ["Entre 0 et 2 °C", "Entre 12 et 14 °C", "Entre 25 et 30 °C"], "b",
+                "Le sol garde 12 à 14 °C toute l'année : c'est ce qu'utilise le puits canadien.", img=F_PUITS),
+        qcm.QCM("En été, que devient l'air qui traverse le puits canadien ?",
+                ["Il est refroidi, car le sol est plus froid que l'air extérieur", "Il est réchauffé",
+                 "Il garde la même température"], "a",
+                "L'été, le sol est plus froid que l'air extérieur : l'air se rafraîchit dans le conduit. L'hiver, c'est "
+                "l'inverse : il se réchauffe."),
+    ]),
+    qcm.partie("Chaleur d'origine renouvelable", 8, [
+        qcm.QCM("Dans un système solaire combiné, que chauffent les capteurs solaires thermiques ?",
+                ["Un fluide caloporteur, qui chauffe l'eau sanitaire et l'eau du chauffage",
+                 "L'air des combles", "Rien : ils produisent de l'électricité"], "a",
+                "Le rayonnement solaire chauffe un fluide caloporteur ; il cède sa chaleur au ballon tampon, qui "
+                "alimente l'eau chaude sanitaire et le chauffage central.", img=F_SSC),
+        qcm.QCM("Où une pompe à chaleur peut-elle capter des calories ?",
+                ["Dans l'air", "Dans le sol", "Dans l'eau", "Dans le fioul"], ["a", "b", "c"],
+                "Une PAC capte les calories de l'air (aérothermie), du sol ou de l'eau (géothermie) : elle ne brûle "
+                "aucun combustible."),
+        qcm.QCM("Dans quel élément de la pompe à chaleur le fluide frigorigène se vaporise-t-il, chauffé par l'air, "
+                "l'eau ou le sol ?", ["L'évaporateur", "Le compresseur", "Le condenseur", "Le détendeur"], "a",
+                "1 : il se vaporise dans l'évaporateur ; 2 : le compresseur élève sa température ; 3 : il cède sa "
+                "chaleur dans le condenseur et redevient liquide ; 4 : le détendeur abaisse sa pression."),
+        qcm.QCM("Une pompe à chaleur de COP 2,5 consomme 2 000 kWh d'électricité dans l'année. Quelle chaleur "
+                "fournit-elle ?", ["800 kWh", "2 500 kWh", "5 000 kWh"], "c",
+                "COP = W thermique produite / W électrique consommée, donc W thermique = 2,5 × 2 000 = 5 000 kWh."),
+        qcm.QCM("Comment le chauffe-eau thermodynamique chauffe-t-il l'eau sanitaire ?",
+                ["Avec une pompe à chaleur intégrée, qui récupère les calories de l'air",
+                 "Avec une chaudière au gaz", "Avec des capteurs solaires posés sur le toit"], "a",
+                "Sa pompe à chaleur intégrée puise les calories de l'air (du local, de l'extérieur ou de la VMC) ; la "
+                "RE2020 le préfère au chauffe-eau électrique classique.", img=F_CET),
+        qcm.QCM("D'après la figure 13 du cours, 1 000 kWh de chaleur correspondent à environ :",
+                ["22 kg de granulés", "220 kg de granulés", "2 200 kg de granulés"], "b",
+                "1 000 kWh = 3/4 de stère de bûches = 1 m³ apparent de plaquettes = 500 kg d'écorces = 220 kg de "
+                "granulés = 100 litres de fioul.", img=F_BOIS),
+        qcm.QCM("Quelles chaudières sont abandonnées dans la RE2020 ?",
+                ["La chaudière fioul", "La chaudière gaz", "La chaudière à granulés de bois"], ["a", "b"],
+                "Les chaudières fioul et gaz brûlent des énergies fossiles : la RE2020 les abandonne. Le bois issu de "
+                "forêts gérées durablement est une énergie renouvelable."),
+        qcm.QCM("Dans le chauffage central, qu'est-ce qu'un plancher chauffant ?",
+                ["Un émetteur de chaleur", "Un générateur de chaleur", "Un moyen de transport de l'eau chaude"], "a",
+                "Énergie (bois, soleil, air) → générateur (chaudière, ballon tampon) → transport (tuyaux en cuivre ou en "
+                "PER) → émetteurs (radiateurs, chauffage au sol)."),
+    ]),
+    qcm.partie("Limiter la consommation", 6, [
+        qcm.QCM("Quelle température réduite conseille-t-on en l'absence des occupants ?", ["12 °C", "16 °C", "19 °C"],
+                "b", "Température de confort de l'ordre de 19 °C en présence des occupants, température réduite de "
+                "l'ordre de 16 °C en leur absence."),
+        qcm.QCM("Par quelles liaisons un programmateur peut-il commander les émetteurs de chaleur ?",
+                ["Le fil pilote", "Une liaison radio", "Le courant porteur en ligne (CPL)", "Un tuyau en cuivre"],
+                ["a", "b", "c"],
+                "Le programmateur envoie ses ordres par TOR, radio, fil pilote ou CPL ; les tuyaux transportent l'eau "
+                "chaude, pas les informations.", img=F_PROG),
+        qcm.QCM("Dans un couloir où l'on ne fait que passer, quelle solution limite la consommation d'éclairage ?",
+                ["La détection de présence", "La détection crépusculaire", "Un éclairage permanent à LED"], "a",
+                "La détection de présence n'allume la lumière que lorsque quelqu'un passe."),
+        qcm.QCM("À quoi sert un puits de lumière ?",
+                ["À amener la lumière naturelle dans les zones sombres de la maison",
+                 "À allumer l'éclairage à la tombée de la nuit", "À produire de l'électricité"], "a",
+                "Un tube réfléchissant traverse la toiture et conduit la lumière du jour jusqu'à une pièce sans "
+                "fenêtre."),
+        qcm.QCM("Parmi ces technologies domotiques, laquelle est filaire ?", ["Bus KNX", "Zigbee", "Z-Wave", "Wi-Fi"],
+                "a", "Filaires : bus KNX, Ethernet domestique, Legrand MyHome. Sans fil : Z-Wave, Zigbee, infrarouge, "
+                "Wi-Fi."),
+        qcm.QCM("Pour commander sa maison depuis un smartphone, à quoi la box domotique est-elle raccordée ?",
+                ["À la box Internet", "Au compteur électrique", "À la VMC"], "a",
+                "Raccordée à la box Internet, la box domotique communique avec l'extérieur : c'est l'interaction à "
+                "distance.", img=F_DOMO),
+    ]),
+    qcm.partie("Produire de l'énergie", 8, [
+        qcm.QCM("Qu'est-ce qu'une maison à énergie positive (Bepos) ?",
+                ["Une maison qui produit plus d'énergie qu'elle n'en consomme", "Une maison qui ne consomme aucune "
+                 "énergie", "Une maison chauffée uniquement au bois"], "a",
+                "Elle produit plus d'énergie qu'elle n'en consomme, le plus souvent grâce au soleil et au vent."),
+        qcm.QCM("Que transforme une cellule photovoltaïque ?",
+                ["Le rayonnement solaire en électricité", "La chaleur du soleil en eau chaude",
+                 "Le vent en électricité"], "a",
+                "La cellule, en silicium, transforme le rayonnement solaire en courant électrique continu.", img=F_PV),
+        qcm.QCM("Un module photovoltaïque compte 60 cellules en série. Sa tension vaut environ :",
+                ["0,5 V", "30 V", "60 V", "120 V"], "b",
+                "Chaque cellule fournit environ 0,5 V ; la mise en série additionne les tensions : 60 × 0,5 = 30 V."),
+        qcm.QCM("Que permet la mise en parallèle de plusieurs chaînes de modules ?",
+                ["D'augmenter le courant fourni", "D'augmenter la tension", "De stocker l'énergie"], "a",
+                "En série, les tensions s'additionnent ; en parallèle, ce sont les courants."),
+        qcm.QCM("Dans une installation sur site isolé, quel élément stocke l'énergie pour la nuit ?",
+                ["Les accumulateurs (batteries)", "L'onduleur", "Le régulateur de charge"], "a",
+                "Les accumulateurs se chargent le jour ; le régulateur gère leur charge et les protège ; l'onduleur "
+                "transforme le continu en alternatif.", img=F_ISOLE),
+        qcm.QCM("Une toiture porte 20 m² de modules photovoltaïques. Sa puissance crête vaut environ :",
+                ["200 Wc", "2 kWc", "20 kWc"], "b",
+                "En première approximation, 1 m² de module produit 100 Wc : 20 × 100 = 2 000 Wc, soit 2 kWc."),
+        qcm.QCM("Dans une installation couplée au réseau, quel appareil compte l'énergie injectée dans le réseau ?",
+                ["Le compteur de production", "Le compteur de consommation", "L'onduleur"], "a",
+                "Le compteur de production comptabilise l'énergie vendue ; l'onduleur convertit le courant continu en "
+                "alternatif, identique à celui du réseau.", img=F_RESEAU),
+        qcm.QCM("Au-delà de quelle hauteur de mât une éolienne domestique exige-t-elle un permis de construire ?",
+                ["6 m", "12 m", "20 m"], "b",
+                "Le permis est exigé à partir de 12 m, alors qu'un bon mât devrait mesurer au moins 20 m : beaucoup "
+                "d'éoliennes ont un mât trop court pour être rentables."),
+    ]),
+]
+
+# ============================================================ ÉTUDE DE CAS 1 — LE PAVILLON FACE À LA RE2020
+# Le pavillon de l'exercice 1.1 jugé avec les notions du cours : plan bioclimatique, compacité, vitrages, chauffage,
+# production photovoltaïque, bilan. Données et hypothèses de l'étude : DT5 (« ep-DT5 »). Les baies et leurs surfaces
+# sont données (le relevé des menuiseries n'est pas demandé) ; le toit de la partie à étage a son faîtage nord-sud :
+# ses versants regardent l'est et l'ouest.
+E_CONFORME = ["Conforme aux principes", "Contraire aux principes"]
+E_BILAN = ["Atout", "Point à améliorer"]
+E_RE2020 = ["Admise par la RE2020", "Abandonnée par la RE2020"]
+CONFORME, CONTRAIRE = KW(P("conforme")), KW(P("contraire"))
+ATOUT, A_AMELIORER = KW(P("atout")), KW(P("ameliorer"))
+
+
+def VAL(v, tol):
+    """Valeur calculée sans unité (l'unité est dans le libellé de la case), juste à tol près."""
+    return NUM(v, tol=tol, rel=0)
+
+
+PARTS_EP = []
+
+# ------------------------------------------------------------ Partie 1 : le plan bioclimatique
+PARTS_EP.append({"title": "Le plan est-il bioclimatique ?", "minutes": 15, "intro": [
+    "<p>Une maison bioclimatique ouvre ses pièces de vie au sud, place ses chambres à l'est, ferme sa façade nord et "
+    "y range ses espaces tampons (partie 1 du cours). Le pavillon suit-il ces principes ? La flèche du Nord est sur le "
+    "plan du rez-de-chaussée (DT2).</p>"],
+    "blocks": [
+    QBAR(["DP1", "DT1", "DT2", "DT3"]),
+    GRP("Vers quel point cardinal ces baies et cette façade regardent-elles ?", "Une étiquette par case.", [
+        ("Porte-fenêtre de la cuisine", KW(P("sud")), "Sud"),
+        ("Fenêtre de la chambre 3", KW(P("est")), "Est"),
+        ("Fenêtres des chambres 1 et 2", KW(P("ouest")), "Ouest"),
+        ("Porte-fenêtre de la chambre 4", KW(P("ouest")), "Ouest"),
+        ("Façade sans aucune ouverture", KW(P("nord")), "Nord")],
+        "<p>La flèche du Nord pointe vers la droite du plan : le haut est à l'ouest, le bas à l'est, la gauche au sud. "
+        "La cuisine et le séjour ont leur porte-fenêtre au <b>sud</b> ; la chambre 3 et les bains, à l'<b>est</b> ; "
+        "les chambres 1, 2 et 4 (et le séjour) à l'<b>ouest</b> ; la façade <b>nord</b> n'a aucune ouverture.</p>",
+        etiquettes=E_ORIENT, liste="Orientations"),
+    GRP("Ces dispositions sont-elles conformes aux principes de l'architecture bioclimatique ?", "Compare avec la "
+        "partie 1 du cours.", [
+        ("Séjour et cuisine ouverts au sud", CONFORME, "Conforme aux principes"),
+        ("Façade nord sans ouverture", CONFORME, "Conforme aux principes"),
+        ("Garage non chauffé au nord", CONFORME, "Conforme aux principes"),
+        ("Chambres 1, 2 et 4 ouvertes à l'ouest", CONTRAIRE, "Contraire aux principes"),
+        ("Chambre 3 ouverte à l'est", CONFORME, "Conforme aux principes")],
+        "<p>Les pièces de vie profitent du sud, la façade nord est fermée et le garage fait tampon : le plan suit "
+        "l'essentiel des principes. Mais trois chambres sur quatre regardent l'<b>ouest</b> : elles reçoivent le "
+        "soleil de l'après-midi et restent chaudes le soir, quand le cours les place à l'est (soleil du matin, "
+        "fraîcheur le soir). Seule la chambre 3 est bien orientée.</p>", etiquettes=E_CONFORME, liste="Principes"),
+    Q("Quel élément d'architecture, absent des façades, éviterait les surchauffes d'été derrière les baies du sud ?",
+      "Un élément cité dans la partie 1 du cours.",
+      KW(P("brise|casquette|pergola|auvent|avancee|debord|store|tonnelle")), "Un brise-soleil (ou une casquette, une "
+      "pergola)",
+      "<p>Un <b>brise-soleil</b> (casquette, pergola, avancée de toit) au-dessus des baies du sud arrête le soleil "
+      "haut de l'été (environ 67° à midi) et laisse entrer le soleil bas de l'hiver (environ 21°). Les volets pleins "
+      "protègent aussi, mais en privant la pièce de lumière.</p>"),
+]})
+
+# ------------------------------------------------------------ Partie 2 : la compacité
+PARTS_EP.append({"title": "La compacité", "minutes": 15, "intro": [
+    "<p>Pour comparer des formes, on assimile la maison à un pavé de même surface habitable (DT5) : V = L × l × h ; "
+    "S<sub>p</sub> = 2 × L × l + 2 × (L + l) × h (murs, toiture et plancher bas, tous déperditifs) ; "
+    "<b>C = S<sub>p</sub> / V</b>.</p>"],
+    "blocks": [
+    QBAR(["DT3", "DT5"]),
+    GRP("Calcule le volume, la surface des parois déperditives et le facteur de compacité de la forme à étage.",
+        "Pavé de 9,00 m × 6,00 m (l'emprise de l'étage, DT3), sur deux niveaux de 2,5 m.", [
+        ("Volume V (m³)", VAL(270, 0.5), "270"), ("Parois déperditives S<sub>p</sub> (m²)", VAL(258, 0.5), "258"),
+        ("Facteur de compacité C (m²/m³)", VAL(0.956, 0.006), "0,96")],
+        "<p>Hauteur : 2 × 2,5 = 5 m. " + calc("V = 9 × 6 × 5 = 270 m³") + " "
+        + calc("S<sub>p</sub> = 2 × 9 × 6 + 2 × (9 + 6) × 5 = 108 + 150 = 258 m²") + " "
+        + calc("C = 258 / 270 ≈ 0,96 m²/m³") + "</p>"),
+    GRP("Même calcul pour une maison de plain-pied de même surface habitable.", "Pavé de 12,00 m × 9,00 m, sur un "
+        "niveau de 2,5 m.", [
+        ("Volume V (m³)", VAL(270, 0.5), "270"), ("Parois déperditives S<sub>p</sub> (m²)", VAL(321, 0.5), "321"),
+        ("Facteur de compacité C (m²/m³)", VAL(1.189, 0.006), "1,19")],
+        "<p>" + calc("V = 12 × 9 × 2,5 = 270 m³") + " : le même volume chauffé. "
+        + calc("S<sub>p</sub> = 2 × 12 × 9 + 2 × (12 + 9) × 2,5 = 216 + 105 = 321 m²") + " "
+        + calc("C = 321 / 270 ≈ 1,19 m²/m³") + "</p>"),
+    Q("Quelle forme est la plus compacte ?", "Plain-pied ou à étage.", KW(P("etage")), "La forme à étage",
+      "<p>La forme <b>à étage</b> : C ≈ 0,96 m²/m³ contre 1,19. La compacité est la meilleure quand C est le plus "
+      "faible.</p>"),
+    Q("Combien de mètres carrés de parois déperditives la forme à étage économise-t-elle ?", "Une valeur et son unité.",
+      NUM(63, "m²", tol=0.5, rel=0), "63 m²",
+      "<p>" + calc("321 − 258 = 63 m²") + " de toiture et de plancher bas en moins pour le même volume chauffé : "
+      "autant de surface par où la chaleur ne s'échappe pas.</p>"),
+]})
+
+# ------------------------------------------------------------ Partie 3 : les vitrages
+PARTS_EP.append({"title": "Les vitrages", "minutes": 20, "intro": [
+    "<p>Le DT5 donne les baies vitrées de la partie chauffée, avec leur surface et leur orientation. Le cours "
+    "recommande une surface vitrée de 16 à 18 % de la surface habitable, répartie à 50 % au sud, 20 à 30 % à l'est, "
+    "20 % à l'ouest et 0 à 10 % au nord.</p>"],
+    "blocks": [
+    QBAR(["DT5"]),
+    GRP("Calcule la surface vitrée de chaque orientation.", "En m², au centième.", [
+        ("Sud (m²)", VAL(5.16, 0.01), "5,16"), ("Ouest (m²)", VAL(8.46, 0.01), "8,46"),
+        ("Est (m²)", VAL(3.33, 0.01), "3,33"), ("Nord (m²)", VAL(0, 0.001), "0")],
+        "<ul><li>Sud : " + calc("2,58 + 2,58 = 5,16 m²") + "</li><li>Ouest : "
+        + calc("2,58 + 2,58 + 0,30 + 1,50 + 1,50 = 8,46 m²") + "</li><li>Est : " + calc("1,26 + 1,50 + 0,57 = 3,33 m²")
+        + "</li><li>Nord : aucune baie.</li></ul>"),
+    Q("Calcule la surface vitrée totale.", "Une valeur et son unité.", NUM(16.95, "m²", tol=0.02, rel=0), "16,95 m²",
+      "<p>" + calc("5,16 + 8,46 + 3,33 + 0 = 16,95 m²") + "</p>"),
+    Q("Quel pourcentage de la surface habitable la surface vitrée représente-t-elle ?", "En %, au dixième.",
+      VAL(15.7, 0.1), "15,7 %",
+      "<p>" + calc("16,95 ÷ 108 × 100 ≈ 15,7 %") + "</p>"),
+    Q("La surface vitrée respecte-t-elle la recommandation du cours ?", "Réponds par oui ou non.", OUI_NON(False),
+      "Non, elle est un peu faible",
+      "<p><b>Non</b> : 15,7 %, c'est un peu moins que les 16 à 18 % recommandés. Il manque environ 0,3 m² de vitrage "
+      "(16 % de 108 m² = 17,3 m²).</p>"),
+    GRP("Quelle part de la surface vitrée chaque orientation représente-t-elle ?", "En %, à l'unité.", [
+        ("Sud (%)", VAL(30.4, 0.6), "30"), ("Ouest (%)", VAL(49.9, 0.6), "50"),
+        ("Est (%)", VAL(19.6, 0.6), "20"), ("Nord (%)", VAL(0, 0.001), "0")],
+        "<p>" + calc("5,16 ÷ 16,95 ≈ 30 %") + " au sud, " + calc("8,46 ÷ 16,95 ≈ 50 %") + " à l'ouest, "
+        + calc("3,33 ÷ 16,95 ≈ 20 %") + " à l'est, 0 % au nord.</p>"),
+    GRP("Compare avec la répartition recommandée.", "Une étiquette par case.", [
+        ("Orientation trop vitrée", KW(P("ouest")), "Ouest"),
+        ("Orientation pas assez vitrée", KW(P("sud")), "Sud")],
+        "<p>L'<b>ouest</b> reçoit 50 % des vitrages au lieu de 20 % ; le <b>sud</b>, 30 % au lieu de 50 %. L'est (20 %) "
+        "et le nord (0 %) sont dans les recommandations. Les grandes baies de la façade A captent le soleil de "
+        "l'après-midi : en été, c'est un risque de surchauffe.</p>", etiquettes=E_ORIENT, liste="Orientations"),
+    GRP("Calcule la déperdition de l'ensemble des vitrages, D = U<sub>w</sub> × S, selon le vitrage.", "En W/K, au "
+        "dixième ; U<sub>w</sub> en W/(m²·K) (DT5).", [
+        ("Double vitrage standard (U<sub>w</sub> = 3) : D (W/K)", VAL(50.85, 0.3), "50,9"),
+        ("Double vitrage peu émissif VIR (U<sub>w</sub> = 1,5) : D (W/K)", VAL(25.43, 0.3), "25,4")],
+        "<p>" + calc("D = 3 × 16,95 ≈ 50,9 W/K") + " avec un double vitrage standard ; "
+        + calc("D = 1,5 × 16,95 ≈ 25,4 W/K") + " avec le vitrage peu émissif du pavillon : deux fois moins.</p>"),
+    Q("Quelle puissance le vitrage peu émissif fait-il économiser quand il fait 19 °C dedans et −5 °C dehors ?",
+      "P = D × écart de température ; une valeur et son unité.", NUM(610, "W", tol=10, rel=0), "Environ 610 W",
+      "<p>L'écart de température est de 24 K : " + calc("(50,9 − 25,4) × 24 ≈ 610 W") + " de moins à fournir par le "
+      "chauffage, à chaque heure de grand froid.</p>"),
+]})
+
+# ------------------------------------------------------------ Partie 4 : le chauffage
+PARTS_EP.append({"title": "Le chauffage", "minutes": 15, "intro": [
+    "<p>Le besoin annuel de chauffage du pavillon est estimé à 5 400 kWh (DT5). Deux générateurs sont envisagés : "
+    "une pompe à chaleur air/eau de COP 3, ou une chaudière à granulés de bois.</p>"],
+    "blocks": [
+    QBAR(["DT5"]),
+    Q("Quelle énergie électrique la pompe à chaleur consomme-t-elle dans l'année ?", "COP = W<sub>thermique</sub> / "
+      "W<sub>électrique</sub> ; une valeur et son unité.", NUM(1800, "kWh", tol=1, rel=0), "1 800 kWh",
+      "<p>" + calc("W<sub>électrique</sub> = 5 400 / 3 = 1 800 kWh") + "</p>"),
+    Q("Quelle chaleur la pompe à chaleur puise-t-elle gratuitement dans l'air extérieur ?", "Une valeur et son unité.",
+      NUM(3600, "kWh", tol=1, rel=0), "3 600 kWh",
+      "<p>" + calc("5 400 − 1 800 = 3 600 kWh") + " : les deux tiers de la chaleur viennent de l'air, une énergie "
+      "renouvelable.</p>"),
+    Q("Quelle masse de granulés la chaudière à granulés brûlerait-elle dans l'année ?", "Équivalences de la figure 13 "
+      "du cours (DT5) ; une valeur et son unité.", NUM(1188, "kg", variantes=[(1.188, "t")], tol=6, rel=0),
+      "1 188 kg, soit environ 1,2 t",
+      "<p>1 000 kWh = 220 kg de granulés : " + calc("5,4 × 220 = 1 188 kg") + " soit environ 1,2 tonne, à stocker "
+      "près de la chaudière.</p>"),
+    Q("Quel volume de fioul une chaudière fioul brûlerait-elle pour le même besoin ?", "Une valeur et son unité.",
+      NUM(540, "L", accepte=("litres", "litre"), tol=1, rel=0), "540 L",
+      "<p>1 000 kWh = 100 litres de fioul : " + calc("5,4 × 100 = 540 L") + "</p>"),
+    GRP("Ces générateurs de chaleur sont-ils admis dans une maison neuve soumise à la RE2020 ?", "Une étiquette par "
+        "case.", [
+        ("Pompe à chaleur air/eau", KW(P("admise")), "Admise par la RE2020"),
+        ("Chaudière à granulés de bois", KW(P("admise")), "Admise par la RE2020"),
+        ("Chaudière fioul", KW(P("abandonnee")), "Abandonnée par la RE2020"),
+        ("Chaudière gaz", KW(P("abandonnee")), "Abandonnée par la RE2020")],
+        "<p>La RE2020 abandonne les chaudières <b>fioul</b> et <b>gaz</b>, qui brûlent des énergies fossiles. La "
+        "pompe à chaleur (énergie de l'air) et la chaudière à granulés (bois issu de forêts gérées durablement) "
+        "utilisent des énergies renouvelables.</p>", etiquettes=E_RE2020, liste="RE2020"),
+]})
+
+# ------------------------------------------------------------ Partie 5 : produire de l'électricité
+PARTS_EP.append({"title": "Produire de l'électricité", "minutes": 20, "intro": [
+    "<p>Le toit de la partie à étage a son faîtage orienté nord-sud : ses deux versants regardent l'est et l'ouest. On "
+    "étudie des modules photovoltaïques sur le versant ouest (DT5). La pente du toit est donnée sur la coupe (DT4) : "
+    "33 %, soit 33 cm de hauteur pour 1 m à l'horizontale.</p>"],
+    "blocks": [
+    QBAR(["DT4", "DT5"]),
+    Q("De quelle hauteur le faîtage dépasse-t-il le bas du versant ?", "Le versant s'étend sur 3,00 m à l'horizontale "
+      "(DT5) ; une valeur et son unité.", NUM(0.99, "m", variantes=[(99, "cm")], tol=0.005, rel=0), "0,99 m",
+      "<p>" + calc("h = 3,00 × 0,33 = 0,99 m") + "</p>"),
+    Q("Calcule la longueur du versant, mesurée dans sa pente (le rampant).", "Théorème de Pythagore ; une valeur et "
+      "son unité, au centième.", NUM(3.159, "m", variantes=[(315.9, "cm")], tol=0.011, rel=0), "3,16 m",
+      "<p>" + calc("√(3,00² + 0,99²) = √9,98 ≈ 3,16 m") + "</p>"),
+    Q("Calcule la surface du versant ouest.", "Le versant mesure 9,00 m le long du faîtage ; une valeur et son unité.",
+      NUM(28.43, "m²", tol=0.15, rel=0), "28,4 m²",
+      "<p>" + calc("S = 9,00 × 3,16 ≈ 28,4 m²") + "</p>"),
+    Q("Combien de modules de 1,00 m × 1,00 m peut-on poser, en laissant libre une bande de 0,50 m sur tout le pourtour "
+      "du versant ?", "Un nombre entier de modules dans chaque direction.", LU(16), "16 modules",
+      "<p>Longueur utile : 9,00 − 2 × 0,50 = 8,00 m, soit 8 modules. Largeur utile : 3,16 − 2 × 0,50 = 2,16 m, soit "
+      "2 rangées (une troisième ne tient pas). " + calc("8 × 2 = 16 modules") + "</p>"),
+    Q("Quelle est la puissance crête de l'installation ?", "Un module de 1 m² : 100 Wc ; une valeur et son unité.",
+      NUM(1600, "Wc", variantes=[(1.6, "kWc")], tol=1, rel=0), "1 600 Wc, soit 1,6 kWc",
+      "<p>" + calc("16 × 100 = 1 600 Wc = 1,6 kWc") + "</p>"),
+    Q("Les modules sont câblés en chaînes de 8 modules en série. Quelle est la tension d'une chaîne ?",
+      "Un module : 36 cellules de 0,5 V en série (DT5) ; une valeur et son unité.", NUM(144, "V", tol=0.5, rel=0),
+      "144 V",
+      "<p>Un module : " + calc("36 × 0,5 = 18 V") + " ; une chaîne : " + calc("8 × 18 = 144 V") + " En série, les "
+      "tensions s'additionnent ; les deux chaînes, en parallèle, additionnent leurs courants.</p>"),
+    Q("Quelle énergie l'installation produit-elle dans l'année ?", "Production du versant ouest (DT5) ; une valeur et "
+      "son unité.", NUM(1600, "kWh", tol=1, rel=0), "1 600 kWh",
+      "<p>" + calc("1,6 kWc × 1 000 kWh/kWc = 1 600 kWh par an") + "</p>"),
+    Q("Quelle part de l'électricité consommée par la pompe à chaleur cette production couvre-t-elle sur l'année ?",
+      "En %, à l'unité (partie 4).", VAL(88.9, 0.6), "Environ 89 %",
+      "<p>" + calc("1 600 ÷ 1 800 × 100 ≈ 89 %") + " Sur l'année, le toit produit presque l'électricité du chauffage ; "
+      "mais le soleil donne surtout l'été, quand la pompe à chaleur tourne peu : l'énergie est alors injectée dans le "
+      "réseau.</p>"),
+]})
+
+# ------------------------------------------------------------ Partie 6 : le bilan
+PARTS_EP.append({"title": "Bilan : les atouts et les points à améliorer", "minutes": 5, "intro": [
+    "<p>Reprends tes résultats : qu'est-ce qui rapproche le pavillon des exigences de la RE2020, et qu'est-ce qu'il "
+    "faudrait revoir ?</p>"],
+    "blocks": [
+    GRP("Classe chaque caractéristique du pavillon.", "Une étiquette par case.", [
+        ("Forme à étage, compacte (partie 2)", ATOUT, "Atout"),
+        ("Vitrages surtout tournés vers l'ouest (partie 3)", A_AMELIORER, "Point à améliorer"),
+        ("Double vitrage peu émissif à l'argon (partie 3)", ATOUT, "Atout"),
+        ("Chauffage par pompe à chaleur (partie 4)", ATOUT, "Atout"),
+        ("Chambres 1, 2 et 4 ouvertes à l'ouest (partie 1)", A_AMELIORER, "Point à améliorer")],
+        "<p><b>Atouts</b> : une forme compacte, un vitrage peu émissif qui divise par deux les pertes des baies, une "
+        "pompe à chaleur qui puise deux tiers de sa chaleur dans l'air, et un toit capable de produire presque "
+        "l'électricité qu'elle consomme. <b>À améliorer</b> : l'orientation, avec trop de baies et de chambres à "
+        "l'ouest, sans protection contre le soleil d'été. Ces choix se font sur le plan, avant de construire : "
+        "ils ne coûtent rien.</p>", etiquettes=E_BILAN, liste="Bilan"),
+]})
+
 # ============================================================ DOCUMENTS (dossiers de présentation et techniques)
 # (clé, titre, nature, dossier technique ?, contenu HTML) ; un exercice cite les clés de ses documents dans "docs".
-# Exemple dans le dépôt « Chaîne fonctionnelle » : DOCS (DP1, DT1).
 DOCS = [
+    ("DP1", "Le pavillon et ses remarques architecturales", "Dossier présentation", False,
+     '<div class="doc-text">' + illustration("lp-perspective", "Perspective du pavillon à étage, avec son porche sous "
+                                             "arcade et son garage", 600) +
+     "<h3>Remarques architecturales</h3><ul><li>Porche d'entrée sous arcade, portes-fenêtres bien exposées et "
+     "couverture en tuiles romanes pour les versants à faibles pentes.</li><li>La configuration du toit est simple à "
+     "2 versants et en appentis sur l'avancée. Elle permet une charpente peu onéreuse en traditionnel ou par "
+     "fermette.</li><li>Double vitrage peu émissif de type 4 + 16 (argon) + 4 et fermeture avec volets pleins en "
+     "bois.</li></ul><p><b>Nota :</b> tous les plans sont sans échelle.</p></div>"),
+    ("DP2", "Lire un plan : repères", "Dossier présentation", False,
+     '<div class="doc-text"><h3>Les vues d\'un dossier de plans</h3><ul>'
+     "<li><b>Perspective</b> : la maison dessinée en trois dimensions, pour en saisir l'allure générale.</li>"
+     "<li><b>Façade</b> (ou élévation) : une face de la maison, vue de face, sans profondeur. On la nomme d'après la "
+     "direction vers laquelle elle regarde : façade sud, façade est…</li>"
+     "<li><b>Plan d'un niveau</b> : la maison coupée horizontalement à environ 1 m du sol, vue de dessus : murs, "
+     "cloisons, portes, fenêtres, escalier, dimensions des pièces.</li>"
+     "<li><b>Coupe</b> : la maison tranchée verticalement : hauteurs sous plafond, allèges, planchers, toiture, "
+     "niveaux.</li></ul>"
+     "<h3>L'orientation</h3><p>La flèche du Nord, dessinée sur le plan, pointe vers le nord. Une façade regarde vers le "
+     "point cardinal situé de son côté du plan.</p>"
+     "<h3>Les cotes</h3><ul><li>Sur les plans, les cotes sont en <b>centimètres</b> : 418 signifie 418 cm, soit "
+     "4,18 m. Rappel : 1 m = 100 cm = 1 000 mm.</li><li>Une <b>chaîne de cotes</b> aligne des cotes partielles ; "
+     "leur somme donne la cote totale.</li><li>Une baie est cotée par sa <b>largeur / hauteur</b> : 120/215 désigne "
+     "une baie de 120 cm de large et de 215 cm de haut ; une croix repère son axe.</li><li>Une <b>cote de niveau</b>, "
+     "en <b>mètres</b>, donne l'altitude d'un sol par rapport au sol fini du rez-de-chaussée (0,00) : −0,60 est "
+     "60 cm plus bas.</li><li>Les plans de ce dossier sont sans échelle : on lit les cotes, on ne mesure pas sur le "
+     "dessin.</li></ul>"
+     '<h3>Le vocabulaire</h3><table class="t"><tbody>'
+     "<tr><td><b>Hauteur sous plafond</b></td><td>Hauteur entre le sol fini et le plafond d'une pièce.</td></tr>"
+     "<tr><td><b>Allège</b></td><td>Partie de mur sous une fenêtre ; sa hauteur va du sol fini au bas de la baie."
+     "</td></tr><tr><td><b>Retombée de linteau</b></td><td>Hauteur entre le haut de la baie et le plafond (le linteau "
+     "est la poutre qui franchit la baie).</td></tr><tr><td><b>Trumeau</b></td><td>Partie de mur entre deux baies "
+     "voisines.</td></tr><tr><td><b>Cloison de distribution</b></td><td>Mur intérieur mince, non porteur, qui sépare "
+     "les pièces.</td></tr><tr><td><b>Complexe isolant</b></td><td>Isolant associé à une plaque de plâtre, posé contre "
+     "la face intérieure d'un mur (isolation intérieure).</td></tr></tbody></table>"
+     "<p>Hauteur sous plafond = allège + hauteur de la baie + retombée de linteau.</p>"
+     "<h3>L'escalier</h3><p>Sur le plan, chaque trait de l'escalier est le <b>nez</b> d'une marche ; le dernier est le "
+     "bord du palier d'arrivée. Les marches qui tournent sont dites <b>balancées</b>.</p><p>Hauteur à franchir = "
+     "hauteur sous plafond + épaisseur du plancher ; hauteur d'une marche = hauteur à franchir ÷ nombre de "
+     "marches.</p></div>"),
+    ("DT1", "Façades A et B", "Dossier technique", True,
+     '<div class="doc-text">' + illustration("lp-facades", "Façade A : partie à étage avec deux fenêtres, deux "
+                                             "portes-fenêtres et une petite fenêtre au rez-de-chaussée, avancée en "
+                                             "appentis. Façade B : pignon, deux portes-fenêtres et arcade du porche",
+                                             560) + "</div>"),
+    ("DT2", "Plan du rez-de-chaussée", "Dossier technique", True,
+     '<div class="doc-text">' + illustration("lp-rdc", "Plan coté du rez-de-chaussée : salon séjour, cuisine, hall, "
+                                             "douche, WC, chambre 4, garage, auvent ; flèche du Nord ; vue "
+                                             "axonométrique de la maison", 560) + "</div>"),
+    ("DT3", "Plan de l'étage", "Dossier technique", True,
+     '<div class="doc-text">' + illustration("lp-etage", "Plan coté de l'étage : chambres 1, 2 et 3, dégagement, "
+                                             "bains et WC, escalier ; toiture de l'avancée", 560) + "</div>"),
+    ("DT4", "Coupe transversale", "Dossier technique", True,
+     '<div class="doc-text">' + illustration("lp-coupe", "Coupe transversale : chambre 1 et bains à l'étage, salon "
+                                             "séjour et cuisine au rez-de-chaussée, vide sanitaire, cotes de "
+                                             "niveau 0,00, −0,60 et −1,25, pente du toit 33 %", 600) + "</div>"),
+    # exercice 1.2 (affichés DT1 et DT2 ; le plan du rez-de-chaussée y devient DT3)
+    ("ip-DT1", "Fiches matériaux : conductivités et formules", "Dossier technique", True,
+     '<div class="doc-text"><h3>Conductivité thermique λ de quelques matériaux</h3><table class="t"><thead><tr>'
+     "<th>Matériau</th><th>λ en W/(m·K)</th><th>Rôle dans la paroi</th></tr></thead><tbody>"
+     "<tr><td>Polystyrène expansé (PSE)</td><td>0,032</td><td>isolant</td></tr>"
+     "<tr><td>Laine de verre</td><td>0,035</td><td>isolant</td></tr>"
+     "<tr><td>Laine de bois</td><td>0,038</td><td>isolant</td></tr>"
+     "<tr><td>Ossature bois</td><td>0,12</td><td>structure</td></tr>"
+     "<tr><td>Brique Monomur</td><td>0,13</td><td>structure</td></tr>"
+     "<tr><td>Plaque de plâtre</td><td>0,25</td><td>parement intérieur</td></tr>"
+     "<tr><td>Terre crue</td><td>0,6 à 1</td><td>structure</td></tr>"
+     "<tr><td>Parpaing creux</td><td>0,95</td><td>structure</td></tr>"
+     "<tr><td>Enduit</td><td>1</td><td>protection extérieure</td></tr></tbody></table>"
+     "<p>Parpaing, ossature bois, Monomur et terre crue : valeurs du cours ; autres matériaux : valeurs usuelles.</p>"
+     "<p><b>Isolant thermique</b> : matériau dont la conductivité λ est inférieure à 0,065 W/(m·K).</p>"
+     "<h3>Épaisseurs vendues</h3><p>Panneaux de polystyrène expansé pour le doublage des murs : 4, 6, 8, 10, 12, 14 et "
+     "16 cm.</p>"
+     "<h3>Formules</h3><ul><li>Résistance thermique d'une couche : <b>R = e / λ</b>, avec e en m, λ en W/(m·K) et R "
+     "en m²·K/W.</li><li>Paroi de plusieurs couches : <b>R<sub>totale</sub> = R<sub>1</sub> + R<sub>2</sub> + "
+     "R<sub>3</sub> + …</b></li><li>Coefficient de transfert thermique : <b>U = 1 / R<sub>totale</sub></b>, en "
+     "W/(m²·K).</li><li>Déperdition thermique de la paroi : <b>D = U × S</b>, en W/K, avec S la surface de la paroi "
+     "en m².</li><li>Puissance perdue : <b>P = D × (T<sub>intérieure</sub> − T<sub>extérieure</sub>)</b>, en W."
+     "</li></ul><p>Plus R est grande, ou plus U est petit, plus la paroi est isolante.</p></div>"),
+    ("ip-DT2", "Le mur de la partie habitation", "Dossier technique", True,
+     '<div class="doc-text"><h3>Composition du mur, de l\'intérieur vers l\'extérieur</h3><table class="t"><thead>'
+     "<tr><th>Couche</th><th>Matériau</th><th>Épaisseur</th></tr></thead><tbody>"
+     "<tr><td>1</td><td>Plaque de plâtre</td><td>1 cm</td></tr>"
+     "<tr><td>2</td><td>Polystyrène expansé</td><td>10 cm</td></tr>"
+     "<tr><td>3</td><td>Parpaing creux</td><td>20 cm</td></tr>"
+     "<tr><td>4</td><td>Enduit extérieur</td><td>1 cm</td></tr></tbody></table>"
+     "<p>La plaque de plâtre et le polystyrène forment un <b>complexe de doublage</b>, collé contre le parpaing par "
+     "des plots de colle : c'est une isolation intérieure, comme sur la figure 3 du cours.</p>"
+     + illustration("ch-fig03-isolation-interieure", "Isolation par laine de verre (mur, isolant, rails, plâtre) et "
+                    "isolation par placoplâtre (mur, point de colle, isolant, plâtre, bande à joint)", 600,
+                    "Figure 3 du cours — Exemples d'isolation intérieure.") +
+     "<h3>Le pan de mur étudié</h3><ul><li>Surface : <b>25 m²</b>, baies déduites.</li><li>Températures : "
+     "<b>19 °C</b> dans la maison, <b>−5 °C</b> dehors (température extérieure de base, un jour froid d'hiver)."
+     "</li></ul></div>"),
+    # étude de cas 1 (affiché DT5, après les plans du pavillon)
+    ("ep-DT5", "Données et hypothèses de l'étude", "Dossier technique", True,
+     '<div class="doc-text"><h3>Le pavillon</h3><p>Surface habitable : environ <b>108 m²</b> (rez-de-chaussée et étage, '
+     "estimée d'après les plans DT2 et DT3).</p>"
+     "<h3>Compacité : deux formes comparées</h3><p>On assimile la maison à un pavé de même surface habitable. Hauteur "
+     "d'un niveau : 2,5 m. Murs, toiture et plancher bas sont tous des parois déperditives.</p><ul>"
+     "<li><b>Forme à étage</b> : 9,00 m × 6,00 m (l'emprise de l'étage, DT3), sur deux niveaux.</li>"
+     "<li><b>Forme de plain-pied</b> : 12,00 m × 9,00 m, sur un niveau.</li></ul>"
+     "<p>V = L × l × h ; S<sub>p</sub> = 2 × L × l + 2 × (L + l) × h ; C = S<sub>p</sub> / V.</p>"
+     '<h3>Les baies vitrées de la partie chauffée</h3><table class="t"><thead><tr><th>Pièce</th><th>Baie</th>'
+     "<th>Largeur / hauteur (cm)</th><th>Surface (m²)</th><th>Orientation</th></tr></thead><tbody>"
+     "<tr><td>Salon séjour</td><td>porte-fenêtre</td><td>120/215</td><td>2,58</td><td>Sud</td></tr>"
+     "<tr><td>Cuisine</td><td>porte-fenêtre</td><td>120/215</td><td>2,58</td><td>Sud</td></tr>"
+     "<tr><td>Salon séjour</td><td>porte-fenêtre</td><td>120/215</td><td>2,58</td><td>Ouest</td></tr>"
+     "<tr><td>Chambre 4</td><td>porte-fenêtre</td><td>120/215</td><td>2,58</td><td>Ouest</td></tr>"
+     "<tr><td>Douche</td><td>fenêtre</td><td>40/75 *</td><td>0,30</td><td>Ouest</td></tr>"
+     "<tr><td>Chambre 1</td><td>fenêtre</td><td>120/125</td><td>1,50</td><td>Ouest</td></tr>"
+     "<tr><td>Chambre 2</td><td>fenêtre</td><td>120/125</td><td>1,50</td><td>Ouest</td></tr>"
+     "<tr><td>Cuisine</td><td>fenêtre</td><td>120/105</td><td>1,26</td><td>Est</td></tr>"
+     "<tr><td>Chambre 3</td><td>fenêtre</td><td>120/125</td><td>1,50</td><td>Est</td></tr>"
+     "<tr><td>Bains</td><td>fenêtre</td><td>60/95</td><td>0,57</td><td>Est</td></tr>"
+     "</tbody></table><p>La porte d'entrée (pleine) et la porte du garage (local non chauffé) ne sont pas comptées. "
+     "* Hauteur de la fenêtre de la douche supposée : elle n'est pas cotée sur les plans.</p>"
+     "<p>Vitrage du pavillon : double vitrage peu émissif 4/16/4 à l'argon (VIR), U<sub>w</sub> = 1,5 W/(m²·K). "
+     "Double vitrage standard : U<sub>w</sub> = 3 W/(m²·K) (valeurs du cours).</p>"
+     "<h3>Le chauffage</h3><ul><li>Besoin annuel de chauffage : <b>5 400 kWh</b> (hypothèse de l'étude : 50 kWh par m² "
+     "habitable).</li><li>Pompe à chaleur air/eau : COP annuel de <b>3</b>.</li><li>Équivalences de la figure 13 du "
+     "cours : 1 000 kWh = 220 kg de granulés = 3/4 de stère de bûches = 100 litres de fioul.</li></ul>"
+     "<h3>Le photovoltaïque</h3><ul><li>Versant ouest de la partie à étage : 9,00 m le long du faîtage, 3,00 m à "
+     "l'horizontale (la moitié des 6,00 m), pente 33 % (DT4).</li><li>Modules de 1,00 m × 1,00 m : 100 Wc, 36 "
+     "cellules de 0,5 V en série.</li><li>Pose : une bande libre de 0,50 m sur tout le pourtour du versant.</li>"
+     "<li>Production : environ <b>1 000 kWh par kWc</b> installé et par an sur ce versant (hypothèse de l'étude)."
+     "</li></ul></div>"),
 ]
 
 
 # ============================================================ EXERCICES ET ÉTUDES (accueil et configuration)
 # Ajouter un exercice : décrire ses parties, puis l'ajouter ici ; "etude": True le range dans la rubrique « Études de
 # cas ». La carte apparaît d'elle-même sur l'accueil (et remplace l'annonce « En cours d'édition »). Modèle :
-#   {"key": "isolation-paroi", "prefix": "a", "tag": "Exercice 1.1", "level": "Niveau 1",
+#   {"key": "vitrage", "prefix": "e", "tag": "Exercice 1.4", "level": "Niveau 1",
 #    "title": "…", "sub": "phrase de présentation", "parts": [{"title": …, "minutes": …, "intro": […], "blocks": […]}],
 #    "docs": ["DP1"], "consignes": CONSIGNES_MODES + CONSIGNES_SAISIE + CONSIGNES_DOCS + CONSIGNES_BAREME,
 #    "hero": ("image", "texte alternatif", "légende"), "mots": [3 à 5 mots-clés], "vign": "carte-…", "valt": "…"}
@@ -537,6 +1520,46 @@ DOCS = [
 # chaque exercice) précède les identifiants des cases (a1_2 : partie 1, question 2) ; les réponses de référence
 # de chaque case sont dans tests/reponses.js.
 EXO_DEFS = [
+    {"key": "lecture-plan", "prefix": "a", "tag": "Exercice 1.1", "level": "Niveau 1",
+     "title": "Lecture de plan : initiation", "parts": PARTS_LP, "docs": ["DP1", "DP2", "DT1", "DT2", "DT3", "DT4"],
+     "consignes": CONSIGNES_MODES + CONSIGNES_SAISIE + CONSIGNES_ETIQUETTES + CONSIGNES_DOCS + CONSIGNES_BAREME,
+     "hero": ("lp-perspective", "Perspective du pavillon à étage, avec son porche sous arcade",
+              "Un pavillon à étage : sa perspective, ses façades, ses plans et sa coupe."),
+     "mots": ["Plans", "Cotes", "Coupe", "Façades", "Escalier"], "vign": "carte-ex11", "valt": "Le pavillon en perspective",
+     "sub": "Lire le dossier de plans d'un pavillon : nature des vues, orientation, architecture, cotes et épaisseurs, "
+            "dimensions des pièces, hauteurs et niveaux, escalier ; puis juger s'il suit les principes de "
+            "l'architecture bioclimatique."},
+    {"key": "isoler-paroi", "prefix": "b", "tag": "Exercice 1.2", "level": "Niveau 1",
+     "title": "Isoler une paroi", "parts": PARTS_IP, "docs": [("DT1", "ip-DT1"), ("DT2", "ip-DT2"), ("DT3", "DT2")],
+     "consignes": CONSIGNES_MODES + CONSIGNES_SAISIE + CONSIGNES_ETIQUETTES + CONSIGNES_DOCS + CONSIGNES_BAREME,
+     "hero": ("ch-fig03-isolation-interieure", "Isolation intérieure : isolant et plaque de plâtre contre le mur",
+              "Le mur du pavillon, isolé par l'intérieur : ses couches, sa résistance, ses pertes."),
+     "mots": ["Conductivité λ", "Résistance R", "Coefficient U", "Déperdition"], "vign": "carte-ex12",
+     "valt": "Un mur isolé par l'intérieur",
+     "sub": "Le mur du pavillon de l'exercice 1.1, couche par couche : reconnaître les isolants, nommer les couches "
+            "sur une coupe, calculer les résistances, le coefficient U et la déperdition, puis comparer avec un mur "
+            "sans isolant et choisir une épaisseur d'isolant."},
+    {"key": "qcm-re2020", "prefix": "c", "tag": "QCM 1.3", "level": "Niveau 1", "qcm": True,
+     "title": "La maison RE2020", "parts": PARTS_QCM, "docs": [], "consignes": qcm.CONSIGNES,
+     "hero": ("ch-fig10-solaire-combine", "Système solaire combiné : capteurs solaires, ballon tampon, eau chaude "
+              "sanitaire et chauffage", "Bioclimatique, isolation, ventilation, chaleur renouvelable, consommation, "
+              "production : tout le cours 1."),
+     "mots": ["Révision", "Bioclimatique", "Isolation", "Énergies renouvelables"], "vign": "carte-qcm",
+     "valt": "Capteurs solaires thermiques et ballon tampon",
+     "sub": "Un questionnaire à choix multiples pour réviser tout le cours 1 : architecture bioclimatique, "
+            "déperditions et isolation, renouvellement de l'air, chaleur d'origine renouvelable, maîtrise des "
+            "consommations, production d'électricité. Idéal en mode examen."},
+    {"key": "etude-pavillon", "prefix": "d", "tag": "Étude 1", "level": "Niveau 2", "etude": True,
+     "title": "Le pavillon face à la RE2020", "parts": PARTS_EP,
+     "docs": ["DP1", "DT1", "DT2", "DT3", "DT4", ("DT5", "ep-DT5")],
+     "consignes": CONSIGNES_MODES + CONSIGNES_SAISIE + CONSIGNES_ETIQUETTES + CONSIGNES_DOCS + CONSIGNES_BAREME,
+     "hero": ("lp-facades", "Façades A et B du pavillon : partie à étage, avancée, porches et portes-fenêtres",
+              "Le pavillon de l'exercice 1.1, jugé avec les notions du cours."),
+     "mots": ["Bioclimatique", "Compacité", "Vitrages", "Pompe à chaleur", "Photovoltaïque"], "vign": "carte-etude",
+     "valt": "La façade ouest du pavillon",
+     "sub": "Le pavillon de l'exercice 1.1 face aux exigences de la RE2020 : orientation des pièces, compacité "
+            "comparée à une maison de plain-pied, surface et répartition des vitrages, consommation d'une pompe à "
+            "chaleur ou d'une chaudière à granulés, modules photovoltaïques sur le toit, puis bilan argumenté."},
 ]
 
 
@@ -546,6 +1569,11 @@ EXO_DEFS = [
 # "Niveau 1", "title": …, "mots": […], "vign": "carte-cours-1", "alt": …, "render": fonction qui rend le cours
 # (HTML), et, s'il est interactif, "js" (script qui définit sa fonction d'initialisation), "init" (son nom), "css"}.
 COURS = [
+    {"key": "cours-habitat-durable", "tag": "Cours 1", "level": "Niveau 1", "title": "Habitat durable : maison performante",
+     "mots": ["Bioclimatique", "Isolation", "Ventilation", "Énergies renouvelables", "RE2020"], "vign": "carte-cours-1",
+     "alt": "Maison en coupe équipée d'une VMC double flux",
+     "render": lambda: cours_habitat.render(AIDES_COURS), "js": cours_habitat.hd_js(), "init": "initCoursHabitat",
+     "css": cours_habitat.HD_CSS},
 ]
 # Pages annexes (formulaire, fiches…) : {"rubrique": "ressources" ou "exercices", "tag", "title", "href", "bouton",
 # "mots", "vign", "alt"} ; la rubrique « Les ressources » n'apparaît que si elle a une carte.
@@ -605,8 +1633,8 @@ def render_hub():
             f'<h2 class="home-choose">Les exercices</h2><div class="ex-grid exo-grid">{cards}</div>'
             f'<h2 class="home-choose">Études de cas</h2><div class="ex-grid etude-grid">{etudes}</div>'
             f'<p class="home-note small">Pastilles : {pastille("Niveau 1").strip()} premier niveau, '
-            f'{pastille("Niveau 2").strip()} niveau approfondi. Les études de cas reprendront des bâtiments réels et '
-            "mobiliseront plusieurs notions. Chaque exercice propose le mode entraînement (correction question par "
+            f'{pastille("Niveau 2").strip()} niveau approfondi. Une étude de cas mobilise plusieurs notions du cours '
+            "sur un même bâtiment. Chaque exercice propose le mode entraînement (correction question par "
             "question) ou le mode examen (correction à la remise de la copie). Rien n'est enregistré sur "
             "l'ordinateur.</p>")
 
@@ -812,12 +1840,13 @@ COURS_COMMUN_CSS = """
 
 # ============================================================ COURS — assemblage
 # le QCM reçoit les fonctions d'images du générateur
-AIDES_QCM = types.SimpleNamespace(png=png, jpg=jpg, image=image, IMAGES=IMAGES)
+AIDES_QCM = types.SimpleNamespace(png=png, jpg=jpg, image=image, image_partagee=image_partagee, IMAGES=IMAGES)
 
 # un cours peut vivre dans son propre module (src/cours_….py) ; il reçoit les éléments communs des cours
 AIDES_COURS = types.SimpleNamespace(course_head=course_head, course_section=course_section, course_nav=course_nav,
                                     quiz_section=quiz_section, jeu_html=jeu_html, HOUSE=HOUSE, figure=figure,
-                                    photo=photo, image=image, esc=esc, fr=fr, frac=frac)
+                                    photo=photo, image=image, image_partagee=image_partagee, esc=esc,
+                                    fr=fr, frac=frac)
 COURS_JS = (COURS_COMMUN_JS + "".join(c.get("js", "") for c in COURS) +
             "\n  var INIT = { " + ", ".join(f'"{c["key"]}": {c["init"]}' for c in COURS if c.get("init")) + " };\n")
 COURS_CSS = COURS_COMMUN_CSS + "".join(c.get("css", "") for c in COURS)
@@ -1228,8 +2257,12 @@ def verifier():
     prefixes = [e["prefix"] for e in EXO_DEFS]
     assert len(set(prefixes)) == len(prefixes), f"préfixe d'exercice en double : {prefixes}"
     docs = {d[0] for d in DOCS}
+    assert len(docs) == len(DOCS), "clé de document en double dans DOCS"
     for e in EXO_DEFS:
-        assert set(e["docs"]) <= docs, f"{e['key']} : document inconnu {set(e['docs']) - docs}"
+        cles = [d if isinstance(d, str) else d[1] for d in e["docs"]]
+        etiq = [d if isinstance(d, str) else d[0] for d in e["docs"]]
+        assert set(cles) <= docs, f"{e['key']} : document inconnu {set(cles) - docs}"
+        assert len(set(etiq)) == len(etiq), f"{e['key']} : étiquette de document en double {etiq}"
     for c in LIENS:
         assert c["rubrique"] in ("ressources", "exercices"), c["title"]
 
@@ -1284,7 +2317,7 @@ def build():
 <title>{TITRE} — cours et exercices interactifs</title>
 <meta name="description" content="Habitat durable, cours et exercices interactifs : concevoir, rénover et habiter un logement économe en énergie et en eau, aux matériaux bien choisis.">
 {style}
-{CONTENT_CSS.replace("__COURS_CSS__", COURS_CSS + qcm.QCM_CSS)}
+{CONTENT_CSS.replace("__COURS_CSS__", COURS_CSS + qcm.QCM_CSS + plans.PLAN_CSS)}
 </head>
 <body class="no-mode">
 
@@ -1365,7 +2398,7 @@ def build():
 {grading}
 {app}
 {ETIQUETTES_JS}
-{qcm.images_js(AIDES_QCM)}
+{images_js()}
 {qcm.QCM_JS}
 </body>
 </html>
