@@ -28,6 +28,7 @@ import types
 import unicodedata
 
 import cours_habitat
+import plans
 import qcm
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -133,9 +134,11 @@ def unite_normee(u):
     return "".join(t for t in s.split() if re.search("[a-z°]", t))
 
 
-def NUM(valeur, unite=None, accepte=(), tol=0, rel=0.01):
+def NUM(valeur, unite=None, accepte=(), tol=0, rel=0.01, variantes=()):
     """Valeur numérique : juste à rel près (1 % par défaut) ou à tol près. Avec une unité (« m²·K/W »), une valeur
-    juste sans unité, ou avec une autre unité, vaut un demi-point ; accepte : autres écritures de l'unité admises."""
+    juste sans unité, ou avec une autre unité, vaut un demi-point ; accepte : autres écritures de l'unité admises.
+    variantes : la même grandeur dans d'autres unités, alors obligatoires, par exemple [(3.05, "m"), (3050, "mm")]
+    pour 305 cm."""
     g = {"type": "num", "value": valeur}
     if tol:
         g["absTol"] = tol
@@ -144,6 +147,9 @@ def NUM(valeur, unite=None, accepte=(), tol=0, rel=0.01):
     if unite:
         formes = [unite_normee(u) for u in (unite, *accepte)]
         g["unit"] = {"label": unite, "accept": list(dict.fromkeys(formes))}
+    if variantes:
+        g["variants"] = [dict(NUM(v, u, tol=abs(tol * v / valeur) if tol else 0, rel=rel), strictUnit=True)
+                         for v, u in variantes]
     return g
 
 
@@ -520,10 +526,286 @@ CONSIGNES_BAREME = """
     <p><strong>Barème pondéré par la durée conseillée</strong> : chaque partie est notée sur 20, puis pèse au prorata de son temps. Le récapitulatif de fin de sujet donne le détail partie par partie.</p>"""
 
 
+# ============================================================ EXERCICE 1.1 — LECTURE DE PLAN : INITIATION
+# Source : l'activité « Lecture de plan — Activité 1 » (sujet et dossier technique d'un pavillon à étage). Le tableau
+# d'inventaire des menuiseries extérieures (question 13) est retiré ; les questions sont orientées vers l'architecture :
+# nature des vues, orientation, caractères du pavillon, pièces, vocabulaire des baies, lien avec le cours (bioclimatique).
+def LU(v):
+    """Valeur lue sur un plan, sans unité (l'unité est dans le libellé de la case) : exacte."""
+    return NUM(v, tol=1e-6, rel=0)
+
+
+def illustration(name, alt, maxw, caption=""):
+    src, w, h = image(name)
+    return (f'<figure class="fig" style="max-width:{maxw}px"><img src="{src}" alt="{esc(alt)}" width="{w}" height="{h}">'
+            + (f"<figcaption>{caption}</figcaption>" if caption else "") + "</figure>")
+
+
+E_DOCS = ["Perspective (DP1)", "Façades (DT1)", "Plan du rez-de-chaussée (DT2)", "Plan de l'étage (DT3)",
+          "Coupe transversale (DT4)", "Plan de masse", "Plan de situation"]
+E_ORIENT = ["Nord", "Sud", "Est", "Ouest"]
+E_ARCHI = ["Tuiles romanes", "Ardoises", "Deux versants", "Toit-terrasse", "Appentis (un seul versant)",
+           "Porche sous arcade", "Volets pleins en bois", "Volets roulants", "Double vitrage 4/16/4 à l'argon",
+           "Simple vitrage"]
+E_PIECES = ["Pièce principale", "Pièce de service", "Circulation"]
+E_VOCAB = ["Hauteur sous plafond", "Retombée de linteau", "Hauteur de la baie", "Allège", "Trumeau", "Cote de niveau",
+           "Épaisseur du plancher", "Largeur de la baie"]
+PRINCIPALE, SERVICE = KW(P("principale")), KW(P("service"))
+
+PARTS_LP = []
+
+# ------------------------------------------------------------ Partie 1 : le dossier de plans
+PARTS_LP.append({"title": "Le dossier de plans", "minutes": 10, "intro": [
+    '<div class="cours-split">' + illustration("lp-perspective", "Perspective du pavillon : une partie à étage, une "
+                                               "avancée de plain-pied, un porche sous arcade et le garage", 420,
+                                               "Le pavillon étudié (DP1).") +
+    "<div><p>Le dossier présente un pavillon à étage : sa <b>perspective</b> et ses remarques architecturales (DP1), "
+    "ses <b>façades</b> (DT1), les <b>plans</b> du rez-de-chaussée (DT2) et de l'étage (DT3) et une <b>coupe</b> "
+    "transversale (DT4). La fiche DP2 rappelle comment lire un plan.</p><p>Chaque document montre la maison d'une "
+    "manière différente : avant de lire une cote, il faut savoir sur quel document la chercher.</p></div></div>"],
+    "blocks": [
+    QBAR(["DP1", "DP2", "DT1", "DT2", "DT3", "DT4"]),
+    GRP("Pour chaque information, choisis le document du dossier où on la lit.", "Une étiquette par case.", [
+        ("L'allure générale de la maison, en trois dimensions", KW(P("perspective")), "Perspective (DP1)"),
+        ("L'aspect de chaque face de la maison : tuiles, volets, porche", KW(P("facade|facades")), "Façades (DT1)"),
+        ("La largeur de la cuisine et l'épaisseur des murs du garage", KW(P("rez|chaussee")),
+         "Plan du rez-de-chaussée (DT2)"),
+        ("L'emplacement des chambres 1, 2 et 3", KW(P("etage")), "Plan de l'étage (DT3)"),
+        ("Les hauteurs : allèges, hauteurs sous plafond, niveaux", KW(P("coupe")), "Coupe transversale (DT4)")],
+        "<p>Chaque vue a son rôle :</p><ul><li>la <b>perspective</b> dessine la maison en trois dimensions ;</li>"
+        "<li>une <b>façade</b> montre une face de la maison vue de face, sans profondeur : matériaux, baies, volets ;</li>"
+        "<li>un <b>plan</b> est une coupe horizontale vue de dessus : murs, cloisons, pièces, largeurs et épaisseurs, "
+        "niveau par niveau ;</li><li>une <b>coupe</b> est une tranche verticale : on y lit les hauteurs et les "
+        "niveaux.</li></ul><p>Le plan de masse et le plan de situation, qui placent la maison sur son terrain et dans "
+        "sa commune, ne font pas partie de ce dossier.</p>", etiquettes=E_DOCS, liste="Documents"),
+    GRP("Donne l'orientation des façades A et B (DT1).", "Repère la flèche du Nord sur le plan du rez-de-chaussée "
+        "(DT2), puis retrouve les baies de chaque façade sur le plan.", [
+        ("Façade A", KW(P("ouest")), "Ouest"), ("Façade B", KW(P("sud")), "Sud")],
+        "<p>Sur le plan du rez-de-chaussée, la flèche du <b>Nord</b> pointe vers la droite : le haut du plan est à "
+        "l'<b>ouest</b>, le bas à l'<b>est</b> (porte d'entrée et porte du garage), la gauche au <b>sud</b> (séjour et "
+        "cuisine). La vue axonométrique, sous le plan, nomme d'ailleurs la façade sud et la façade est.</p><ul>"
+        "<li><b>Façade A</b> : la partie à étage, avec les fenêtres des chambres 1 et 2, puis au rez-de-chaussée les "
+        "portes-fenêtres de la chambre 4 et du séjour et la petite fenêtre de la douche : c'est la face du haut du "
+        "plan, à l'<b>ouest</b>.</li><li><b>Façade B</b> : un pignon, les portes-fenêtres du séjour et de la cuisine "
+        "et l'arcade du porche : c'est la face de gauche du plan, au <b>sud</b>.</li></ul>",
+        etiquettes=E_ORIENT, liste="Orientations"),
+    GRP("Caractérise l'architecture du pavillon.", "Lis les remarques architecturales (DP1) et observe les façades "
+        "(DT1).", [
+        ("Couverture (matériau du toit)", KW(P("tuile|tuiles")), "Tuiles romanes"),
+        ("Toit de la partie à étage", KW(P("deux|2", "versant|versants")), "Deux versants"),
+        ("Toit de l'avancée (séjour, cuisine)", KW(P("appentis")), "Appentis (un seul versant)"),
+        ("Entrée de la maison", KW(P("porche|arcade")), "Porche sous arcade"),
+        ("Fermeture des baies", KW(P("volet|volets", "plein|pleins")), "Volets pleins en bois"),
+        ("Vitrage", KW(P("double", "vitrage")), "Double vitrage 4/16/4 à l'argon")],
+        "<p>Les remarques architecturales (DP1) décrivent le pavillon : <b>porche d'entrée sous arcade</b>, portes-"
+        "fenêtres bien exposées, <b>couverture en tuiles romanes</b> pour des versants à faibles pentes ; un toit "
+        "simple à <b>deux versants</b>, et en <b>appentis</b> (un seul versant) sur l'avancée, pour une charpente "
+        "peu onéreuse ; un <b>double vitrage peu émissif 4 + 16 (argon) + 4</b> (deux verres de 4 mm séparés par "
+        "16 mm d'argon) et des <b>volets pleins en bois</b>. Les façades (DT1) le montrent.</p>",
+        etiquettes=E_ARCHI, liste="Architecture"),
+]})
+
+# ------------------------------------------------------------ Partie 2 : les cotes des plans
+PARTS_LP.append({"title": "Lire les cotes des plans", "minutes": 15, "intro": [
+    "<p>Sur les plans, les cotes sont écrites en <b>centimètres</b>. Rappel : 1 m = 100 cm = 1 000 mm.</p>"],
+    "blocks": [
+    QBAR(["DP2", "DT2", "DT3"]),
+    GRP("Quelle est l'épaisseur des cloisons de distribution de l'étage (DT3) ?", "En cm, puis en mm.", [
+        ("Épaisseur (cm)", LU(5), "5"), ("Épaisseur (mm)", LU(50), "50")],
+        "<p>Les cloisons qui séparent les chambres et le dégagement sont cotées <b>5</b> : 5 cm = 50 mm (× 10).</p>"),
+    GRP("Quelle est la largeur de la cuisine (DT2) ?", "En cm, puis en m.", [
+        ("Largeur (cm)", LU(418), "418"), ("Largeur (m)", LU(4.18), "4,18")],
+        "<p>Sous la cuisine, la cote intérieure indique <b>418</b> : 418 cm = 4,18 m (÷ 100).</p>"),
+    GRP("Quelle est l'épaisseur des murs extérieurs de la partie habitation (DT2) ?", "En cm, puis en mm.", [
+        ("Épaisseur (cm)", LU(32), "32"), ("Épaisseur (mm)", LU(320), "320")],
+        "<p>Les murs de la partie habitation sont cotés <b>32</b> (par exemple en haut du salon séjour) : 32 cm = "
+        "320 mm.</p>"),
+    GRP("Quelle est l'épaisseur des murs extérieurs du garage (DT2) ?", "En cm, puis en mm.", [
+        ("Épaisseur (cm)", LU(20), "20"), ("Épaisseur (mm)", LU(200), "200")],
+        "<p>Les murs du garage sont cotés <b>20</b> : 20 cm = 200 mm. Ils sont plus minces : le garage n'est pas "
+        "chauffé, il n'est pas isolé.</p>"),
+    Q("Calcule l'épaisseur du complexe isolant des murs de la partie habitation.", "Les murs de l'habitation et du "
+      "garage ont le même mur porteur ; seule l'habitation est isolée. Une valeur et son unité.",
+      NUM(12, "cm", variantes=[(0.12, "m"), (120, "mm")], tol=1e-6, rel=0), "12 cm",
+      "<p>Le mur de l'habitation (32 cm) est le mur porteur du garage (20 cm) doublé, côté intérieur, d'un complexe "
+      "isolant (isolant et plaque de plâtre : l'isolation intérieure du cours) : " + calc("32 − 20 = 12 cm") + "</p>"),
+    GRP("Quelle est la dimension du trumeau entre la baie de la chambre 1 et celle de la chambre 2 (DT3) ?",
+        "En cm, puis en m.", [("Trumeau (cm)", LU(160), "160"), ("Trumeau (m)", LU(1.6), "1,60")],
+        "<p>Sur la façade ouest de l'étage, la chaîne de cotes indique 100 | 120/125 | <b>160</b> | 120/125 | 100 : "
+        "entre les deux baies, il reste 160 cm de mur, soit 1,60 m.</p>"),
+    Q("Quelle est la dimension du trumeau entre les baies de la cuisine et du salon séjour (DT2) ? Précise l'unité.",
+      "Une valeur et son unité.", NUM(305, "cm", variantes=[(3.05, "m"), (3050, "mm")], tol=1e-6, rel=0),
+      "305 cm, soit 3,05 m ou 3 050 mm",
+      "<p>Sur la façade sud (côté gauche du plan), la chaîne de cotes indique 230 | 120/215 | <b>305</b> | 120/215 | "
+      "125 : 305 cm séparent la porte-fenêtre du séjour de celle de la cuisine.</p>"),
+]})
+
+# ------------------------------------------------------------ Partie 3 : les pièces
+PARTS_LP.append({"title": "Les pièces de la maison", "minutes": 10, "intro": [
+    "<p>Les dimensions intérieures des pièces se lisent sur les plans, entre les faces des murs et des cloisons.</p>"],
+    "blocks": [
+    QBAR(["DT2"]),
+    GRP("Relève les dimensions intérieures de ces pièces (DT2), en mètres.", "La longueur est la plus grande des deux "
+        "dimensions.", [
+        ("Hall — longueur (m)", LU(3.5), "3,50"), ("Hall — largeur (m)", LU(1.5), "1,50"),
+        ("Chambre 4 — longueur (m)", LU(4.58), "4,58"), ("Chambre 4 — largeur (m)", LU(3.03), "3,03"),
+        ("Garage — longueur (m)", LU(5), "5,00"), ("Garage — largeur (m)", LU(3.1), "3,10")],
+        "<ul><li><b>Hall</b> : 350 × 150 cm, soit 3,50 m × 1,50 m.</li><li><b>Chambre 4</b> : 458 × 303 cm, soit "
+        "4,58 m × 3,03 m.</li><li><b>Garage</b> : 500 × 310 cm, soit 5,00 m × 3,10 m.</li></ul>"),
+    Q("Calcule la surface de la chambre 4.", "Surface = longueur × largeur ; résultat en m², au centième.",
+      NUM(13.88, "m²", accepte=("m2",), tol=0.01, rel=0), "13,88 m²",
+      "<p>" + calc("S = 4,58 × 3,03 = 13,88 m²") + " C'est une surface habitable : celle dont on dispose une fois "
+      "les murs et les cloisons construits.</p>"),
+    GRP("Classe ces pièces pour la ventilation (partie 3 du cours).", "Pièce principale : on y vit et l'air neuf y "
+        "entre ; pièce de service : l'air vicié y est extrait.", [
+        ("Salon séjour", PRINCIPALE, "Pièce principale"), ("Chambre 4", PRINCIPALE, "Pièce principale"),
+        ("Cuisine", SERVICE, "Pièce de service"), ("Douche", SERVICE, "Pièce de service"),
+        ("WC", SERVICE, "Pièce de service"), ("Hall", KW(P("circulation")), "Circulation")],
+        "<p>La VMC fait entrer l'air neuf dans les <b>pièces principales</b> (séjour, chambres) et extrait l'air vicié "
+        "des <b>pièces de service</b> (cuisine, salle d'eau, WC). Le hall est une <b>circulation</b> : l'air le "
+        "traverse en passant sous les portes.</p>", etiquettes=E_PIECES, liste="Pièces"),
+]})
+
+# ------------------------------------------------------------ Partie 4 : la coupe, hauteurs et niveaux
+PARTS_LP.append({"title": "Lire la coupe : hauteurs et niveaux", "minutes": 15, "intro": [
+    "<p>La coupe transversale (DT4) montre la maison tranchée par un plan vertical : on y lit les hauteurs, en "
+    "centimètres, et les <b>cotes de niveau</b>, en mètres, par rapport au sol fini du rez-de-chaussée (0,00).</p>"],
+    "plan": dict(plans.baie(), caption="Figure 1 — Coupe verticale d'une pièce, mur de façade vu de l'intérieur : "
+                 "les 6 cases repérées en rouge reçoivent les étiquettes."),
+    "blocks": [
+    QBAR(["DP2"], "sur la figure 1"),
+    GRP("Nomme ce que mesure chaque cote de la figure 1.", "Une étiquette par case ; deux étiquettes ne servent pas.", [
+        ("Repère 1", KW(P("plafond")), "Hauteur sous plafond"), ("Repère 2", KW(P("retombee")), "Retombée de linteau"),
+        ("Repère 3", KW(P("baie"), forbid="largeur"), "Hauteur de la baie"), ("Repère 4", KW(P("allege")), "Allège"),
+        ("Repère 5", KW(P("trumeau")), "Trumeau"), ("Repère 6", KW(P("niveau")), "Cote de niveau")],
+        "<ul><li><b>1</b> : du sol fini au plafond, la <b>hauteur sous plafond</b>.</li><li><b>2</b> : du haut de la "
+        "baie au plafond, la <b>retombée de linteau</b>.</li><li><b>3</b> : la <b>hauteur de la baie</b>.</li>"
+        "<li><b>4</b> : du sol fini au bas de la baie, l'<b>allège</b>.</li><li><b>5</b> : le mur entre deux baies, "
+        "le <b>trumeau</b>.</li><li><b>6</b> : l'altitude du sol fini, la <b>cote de niveau</b> (0,00).</li></ul>"
+        "<p>La chaîne de cotes de gauche le montre : hauteur sous plafond = allège + hauteur de la baie + retombée de "
+        "linteau.</p>", etiquettes=E_VOCAB, liste="Vocabulaire", zones=["1", "2", "3", "4", "5", "6"]),
+    QBAR(["DT4"]),
+    GRP("Quelle est la hauteur sous plafond de la chambre 1 ?", "En mètres, puis en millimètres.", [
+        ("Hauteur sous plafond (m)", LU(2.45), "2,45"), ("Hauteur sous plafond (mm)", LU(2450), "2450")],
+        "<p>Sous la chambre 1, la coupe empile l'allège, la baie et la retombée de linteau : "
+        + calc("0,90 + 1,25 + 0,30 = 2,45 m") + " soit 2 450 mm (× 1 000). La coupe l'écrit aussi : « 245 "
+        "minimum ».</p>"),
+    Q("Quelle est la hauteur d'allège de la chambre 1 ?", "Une valeur et son unité.",
+      NUM(0.9, "m", variantes=[(90, "cm"), (900, "mm")], tol=1e-6, rel=0), "90 cm, soit 0,90 m",
+      "<p>La première cote au-dessus du plancher de la chambre 1 est <b>90</b> : l'allège mesure 90 cm, du sol fini "
+      "au bas de la baie.</p>"),
+    GRP("Quelle est la retombée de linteau de la chambre 1 ?", "En mètres, puis en millimètres.", [
+        ("Retombée (m)", LU(0.3), "0,30"), ("Retombée (mm)", LU(300), "300")],
+        "<p>Au-dessus de la baie de la chambre 1, la coupe indique <b>30</b> : 30 cm = 0,30 m = 300 mm.</p>"),
+    Q("Quelle est la cote de niveau du sol fini du garage ?", "En mètres, avec son signe, comme sur la coupe.",
+      LU(-0.6), "−0,60",
+      "<p>Le symbole de niveau du garage indique <b>−0,60</b> : son sol fini est 60 cm plus bas que celui de "
+      "l'habitation (0,00).</p>"),
+    Q("Quelle est la pente du toit ?", "En pourcentage.", LU(33), "33 %",
+      "<p>La coupe l'indique : <b>pente 33 %</b>, soit 33 cm de hauteur pour 1 m à l'horizontale. Une faible pente "
+      "convient aux tuiles romanes.</p>"),
+]})
+
+# ------------------------------------------------------------ Partie 5 : l'escalier
+PARTS_LP.append({"title": "L'escalier", "minutes": 5, "intro": [
+    "<p>L'escalier relie le hall du rez-de-chaussée (DT2) au dégagement de l'étage (DT3) : le plan de l'étage le "
+    "montre en entier.</p>"],
+    "blocks": [
+    QBAR(["DP2", "DT3", "DT4"]),
+    Q("Combien de marches compte l'escalier ?", "Sur le plan de l'étage (DT3), compte les nez de marche : la volée "
+      "droite, le bord du palier d'arrivée et les marches balancées qui tournent au départ.", LU(14), "14 marches",
+      "<p>On compte <b>11</b> traits dans la volée droite (le dernier est le bord du palier d'arrivée) et <b>3</b> "
+      "marches balancées au départ, côté hall : " + calc("11 + 3 = 14 marches") + "</p>"),
+    Q("Calcule la hauteur à franchir entre le rez-de-chaussée et l'étage, sachant que l'épaisseur du plancher haut du "
+      "rez-de-chaussée est de 15 cm.", "Hauteur sous plafond du rez-de-chaussée (DT4) + épaisseur du plancher ; une "
+      "valeur et son unité.", NUM(2.6, "m", variantes=[(260, "cm"), (2600, "mm")], tol=1e-6, rel=0),
+      "2,60 m, soit 260 cm",
+      "<p>La hauteur sous plafond du rez-de-chaussée est de 2,45 m (« 245 minimum » sur la coupe) : "
+      + calc("2,45 + 0,15 = 2,60 m") + "</p>"),
+    Q("Calcule la hauteur d'une marche, au dixième de millimètre.", "Hauteur à franchir ÷ nombre de marches ; résultat "
+      "en mm.", NUM(185.7, "mm", variantes=[(18.57, "cm")], tol=0.051, rel=0), "185,7 mm",
+      "<p>" + calc("2 600 ÷ 14 = 185,7 mm") + " Toutes les marches ont la même hauteur : c'est ce qui rend un "
+      "escalier confortable.</p>"),
+]})
+
+# ------------------------------------------------------------ Partie 6 : le pavillon et l'architecture bioclimatique
+PARTS_LP.append({"title": "Le pavillon est-il bioclimatique ?", "minutes": 5, "intro": [
+    "<p>Compare le pavillon aux principes de l'architecture bioclimatique (partie 1 du cours) : pièces de vie au sud, "
+    "façade nord protégée, espaces tampons au nord.</p>"],
+    "blocks": [
+    QBAR(["DT1", "DT2", "DT3"]),
+    Q("Quelle façade ne comporte aucune ouverture ?", "Un point cardinal.", KW(P("nord")), "La façade nord",
+      "<p>Le côté droit des plans, au <b>nord</b>, n'a ni porte ni fenêtre, au rez-de-chaussée comme à l'étage : "
+      "la façade nord est fermée, comme le recommande l'architecture bioclimatique.</p>"),
+    Q("Quel local non chauffé, placé au nord, sert d'espace tampon ?", "Un nom de local.", KW(P("garage")),
+      "Le garage",
+      "<p>Le <b>garage</b>, au nord-est, n'est pas chauffé (ses murs ne sont pas isolés) : il protège la chambre 4 et "
+      "le hall du froid.</p>"),
+    Q("Sur quelle façade le salon séjour et la cuisine ont-ils tous deux une porte-fenêtre ?", "Un point cardinal.",
+      KW(P("sud")), "Sud",
+      "<p>Le séjour et la cuisine ont chacun une porte-fenêtre au <b>sud</b> (façade B) : les pièces de vie profitent "
+      "de la lumière et des apports solaires.</p>"),
+]})
+
+
 # ============================================================ DOCUMENTS (dossiers de présentation et techniques)
 # (clé, titre, nature, dossier technique ?, contenu HTML) ; un exercice cite les clés de ses documents dans "docs".
-# Exemple dans le dépôt « Chaîne fonctionnelle » : DOCS (DP1, DT1).
 DOCS = [
+    ("DP1", "Le pavillon et ses remarques architecturales", "Dossier présentation", False,
+     '<div class="doc-text">' + illustration("lp-perspective", "Perspective du pavillon à étage, avec son porche sous "
+                                             "arcade et son garage", 600) +
+     "<h3>Remarques architecturales</h3><ul><li>Porche d'entrée sous arcade, portes-fenêtres bien exposées et "
+     "couverture en tuiles romanes pour les versants à faibles pentes.</li><li>La configuration du toit est simple à "
+     "2 versants et en appentis sur l'avancée. Elle permet une charpente peu onéreuse en traditionnel ou par "
+     "fermette.</li><li>Double vitrage peu émissif de type 4 + 16 (argon) + 4 et fermeture avec volets pleins en "
+     "bois.</li></ul><p><b>Nota :</b> tous les plans sont sans échelle.</p></div>"),
+    ("DP2", "Lire un plan : repères", "Dossier présentation", False,
+     '<div class="doc-text"><h3>Les vues d\'un dossier de plans</h3><ul>'
+     "<li><b>Perspective</b> : la maison dessinée en trois dimensions, pour en saisir l'allure générale.</li>"
+     "<li><b>Façade</b> (ou élévation) : une face de la maison, vue de face, sans profondeur. On la nomme d'après la "
+     "direction vers laquelle elle regarde : façade sud, façade est…</li>"
+     "<li><b>Plan d'un niveau</b> : la maison coupée horizontalement à environ 1 m du sol, vue de dessus : murs, "
+     "cloisons, portes, fenêtres, escalier, dimensions des pièces.</li>"
+     "<li><b>Coupe</b> : la maison tranchée verticalement : hauteurs sous plafond, allèges, planchers, toiture, "
+     "niveaux.</li></ul>"
+     "<h3>L'orientation</h3><p>La flèche du Nord, dessinée sur le plan, pointe vers le nord. Une façade regarde vers le "
+     "point cardinal situé de son côté du plan.</p>"
+     "<h3>Les cotes</h3><ul><li>Sur les plans, les cotes sont en <b>centimètres</b> : 418 signifie 418 cm, soit "
+     "4,18 m. Rappel : 1 m = 100 cm = 1 000 mm.</li><li>Une <b>chaîne de cotes</b> aligne des cotes partielles ; "
+     "leur somme donne la cote totale.</li><li>Une baie est cotée par sa <b>largeur / hauteur</b> : 120/215 désigne "
+     "une baie de 120 cm de large et de 215 cm de haut ; une croix repère son axe.</li><li>Une <b>cote de niveau</b>, "
+     "en <b>mètres</b>, donne l'altitude d'un sol par rapport au sol fini du rez-de-chaussée (0,00) : −0,60 est "
+     "60 cm plus bas.</li><li>Les plans de ce dossier sont sans échelle : on lit les cotes, on ne mesure pas sur le "
+     "dessin.</li></ul>"
+     '<h3>Le vocabulaire</h3><table class="t"><tbody>'
+     "<tr><td><b>Hauteur sous plafond</b></td><td>Hauteur entre le sol fini et le plafond d'une pièce.</td></tr>"
+     "<tr><td><b>Allège</b></td><td>Partie de mur sous une fenêtre ; sa hauteur va du sol fini au bas de la baie."
+     "</td></tr><tr><td><b>Retombée de linteau</b></td><td>Hauteur entre le haut de la baie et le plafond (le linteau "
+     "est la poutre qui franchit la baie).</td></tr><tr><td><b>Trumeau</b></td><td>Partie de mur entre deux baies "
+     "voisines.</td></tr><tr><td><b>Cloison de distribution</b></td><td>Mur intérieur mince, non porteur, qui sépare "
+     "les pièces.</td></tr><tr><td><b>Complexe isolant</b></td><td>Isolant associé à une plaque de plâtre, posé contre "
+     "la face intérieure d'un mur (isolation intérieure).</td></tr></tbody></table>"
+     "<p>Hauteur sous plafond = allège + hauteur de la baie + retombée de linteau.</p>"
+     "<h3>L'escalier</h3><p>Sur le plan, chaque trait de l'escalier est le <b>nez</b> d'une marche ; le dernier est le "
+     "bord du palier d'arrivée. Les marches qui tournent sont dites <b>balancées</b>.</p><p>Hauteur à franchir = "
+     "hauteur sous plafond + épaisseur du plancher ; hauteur d'une marche = hauteur à franchir ÷ nombre de "
+     "marches.</p></div>"),
+    ("DT1", "Façades A et B", "Dossier technique", True,
+     '<div class="doc-text">' + illustration("lp-facades", "Façade A : partie à étage avec deux fenêtres, deux "
+                                             "portes-fenêtres et une petite fenêtre au rez-de-chaussée, avancée en "
+                                             "appentis. Façade B : pignon, deux portes-fenêtres et arcade du porche",
+                                             560) + "</div>"),
+    ("DT2", "Plan du rez-de-chaussée", "Dossier technique", True,
+     '<div class="doc-text">' + illustration("lp-rdc", "Plan coté du rez-de-chaussée : salon séjour, cuisine, hall, "
+                                             "douche, WC, chambre 4, garage, auvent ; flèche du Nord ; vue "
+                                             "axonométrique de la maison", 560) + "</div>"),
+    ("DT3", "Plan de l'étage", "Dossier technique", True,
+     '<div class="doc-text">' + illustration("lp-etage", "Plan coté de l'étage : chambres 1, 2 et 3, dégagement, "
+                                             "bains et WC, escalier ; toiture de l'avancée", 560) + "</div>"),
+    ("DT4", "Coupe transversale", "Dossier technique", True,
+     '<div class="doc-text">' + illustration("lp-coupe", "Coupe transversale : chambre 1 et bains à l'étage, salon "
+                                             "séjour et cuisine au rez-de-chaussée, vide sanitaire, cotes de "
+                                             "niveau 0,00, −0,60 et −1,25, pente du toit 33 %", 600) + "</div>"),
 ]
 
 
@@ -538,6 +820,15 @@ DOCS = [
 # chaque exercice) précède les identifiants des cases (a1_2 : partie 1, question 2) ; les réponses de référence
 # de chaque case sont dans tests/reponses.js.
 EXO_DEFS = [
+    {"key": "lecture-plan", "prefix": "a", "tag": "Exercice 1.1", "level": "Niveau 1",
+     "title": "Lecture de plan : initiation", "parts": PARTS_LP, "docs": ["DP1", "DP2", "DT1", "DT2", "DT3", "DT4"],
+     "consignes": CONSIGNES_MODES + CONSIGNES_SAISIE + CONSIGNES_ETIQUETTES + CONSIGNES_DOCS + CONSIGNES_BAREME,
+     "hero": ("lp-perspective", "Perspective du pavillon à étage, avec son porche sous arcade",
+              "Un pavillon à étage : sa perspective, ses façades, ses plans et sa coupe."),
+     "mots": ["Plans", "Cotes", "Coupe", "Façades", "Escalier"], "vign": "carte-ex11", "valt": "Le pavillon en perspective",
+     "sub": "Lire le dossier de plans d'un pavillon : nature des vues, orientation, architecture, cotes et épaisseurs, "
+            "dimensions des pièces, hauteurs et niveaux, escalier ; puis juger s'il suit les principes de "
+            "l'architecture bioclimatique."},
 ]
 
 
@@ -1290,7 +1581,7 @@ def build():
 <title>{TITRE} — cours et exercices interactifs</title>
 <meta name="description" content="Habitat durable, cours et exercices interactifs : concevoir, rénover et habiter un logement économe en énergie et en eau, aux matériaux bien choisis.">
 {style}
-{CONTENT_CSS.replace("__COURS_CSS__", COURS_CSS + qcm.QCM_CSS)}
+{CONTENT_CSS.replace("__COURS_CSS__", COURS_CSS + qcm.QCM_CSS + plans.PLAN_CSS)}
 </head>
 <body class="no-mode">
 
