@@ -106,3 +106,24 @@ test("schémas à compléter : le schéma corrigé montre la bonne étiquette", 
   for (const [k, cases] of Object.entries(ATTENDUES))
     for (const [id, att] of Object.entries(cases)) assert.equal(att, REP[k][id], `${k} ${id}`);
 });
+
+// Exercice 1.1 (lecture de plan) : autres écritures justes, demi-points d'unité et confusions plausibles.
+const LP = EXOS["lecture-plan"] ? {
+  a2_5: [["12 cm", 1], ["0,12 m", 1], ["120 mm", 1], ["12", 0.5], ["32 cm", 0]],
+  a2_7: [["305 cm", 1], ["3,05 m", 1], ["3050 mm", 1], ["3 050 mm", 1], ["305", 0.5], ["3,05", 0], ["30,5 cm", 0]],
+  a3_2: [["13,88 m²", 1], ["13,88 m2", 1], ["S = 4,58 × 3,03 = 13,88 m²", 1], ["13,88", 0.5], ["13,9 m²", 0], ["13,87 m²", 1]],
+  a4_3: [["90 cm", 1], ["0,90 m", 1], ["0,9 m", 1], ["900 mm", 1], ["90", 0.5], ["0,9", 0], ["30 cm", 0]],
+  a4_5: [["−0,60", 1], ["-0,6", 1], ["-0,60 m", 1], ["0,60", 0], ["-1,25", 0]],
+  a4_6: [["33", 1], ["33 %", 1], ["pente de 33 %", 1], ["3,3", 0]],
+  a5_1: [["14", 1], ["14 marches", 1], ["15", 0], ["13", 0]],
+  a5_2: [["2,60 m", 1], ["260 cm", 1], ["2600 mm", 1], ["2,6", 0.5], ["2,45 m", 0]],
+  a5_3: [["185,7 mm", 1], ["185,71 mm", 1], ["18,57 cm", 1], ["185,7", 0.5], ["186 mm", 0], ["173,3 mm", 0]],
+  a6_1: [["nord", 1], ["La façade nord", 1], ["sud", 0], ["est", 0]],
+  a6_2: [["garage", 1], ["Le garage", 1], ["cellier", 0], ["hall", 0]],
+  a6_3: [["sud", 1], ["la façade Sud", 1], ["ouest", 0], ["est", 0]],
+} : null;
+
+test("lecture de plan : autres écritures acceptées, unité manquante, confusions", { skip: LP ? false : "exercice absent" }, () => {
+  for (const [id, cas] of Object.entries(LP))
+    for (const [ans, attendu] of cas) assert.equal(ok("lecture-plan", id, ans), attendu, `${id} : ${ans}`);
+});

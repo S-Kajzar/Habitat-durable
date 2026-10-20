@@ -213,3 +213,71 @@ for (const [k, E] of Object.entries(EXOS)) {
     await context.close();
   });
 }
+
+// Cours 1 (habitat durable) : chaque figure interactive et chaque simulateur réagit, avec les valeurs du cours.
+test("cours habitat durable : figures et simulateurs", { skip: COURS.includes("cours-habitat-durable") ? false : "cours absent" }, async () => {
+  const { context, page, errors } = await open("?ex=cours-habitat-durable");
+  // texte affiché (innerText), ou contenu d'un texte SVG, qui n'a pas d'innerText
+  const lire = async (sel) => (await page.locator(sel).first().evaluate((e) => e.innerText ?? e.textContent))
+    .replace(/\s+/g, " ").trim();
+  // figure 1 : le soleil d'hiver entre jusqu'au fond du séjour, celui d'été est arrêté par l'avancée du toit
+  assert.notEqual(await page.locator("#hd-bio-beam").getAttribute("points"), "");
+  await page.click(".hd-bio-s[data-s=ete]");
+  assert.equal(await page.locator("#hd-bio-beam").getAttribute("points"), "");
+  assert.match(await lire("#hd-bio-txt"), /ombrage tout le vitrage/);
+  await page.click(".hd-bio-n[data-g='2']");
+  assert.ok(await page.locator("#hd-bio-g2.on").count());
+  // figure 2 : une flèche explique sa part
+  await page.click(".hd-dep-a[data-k=toit] polygon");
+  assert.match(await lire("#hd-dep-txt"), /Toiture : 30 %/);
+  // compacité : à étage, la maison est plus compacte
+  assert.match(await lire("#hd-comp-v"), /À étage, C = 0,98 m²\/m³ contre 1,21/);
+  // paroi : R, U, D de la paroi par défaut, puis sans isolant
+  assert.equal(await lire("#hd-pa-rt"), "3,13 m²·K/W");
+  assert.equal(await lire("#hd-pa-u"), "0,32 W/(m²·K)");
+  assert.equal(await lire("#hd-pa-d"), "6,4 W/K");
+  await page.locator(".hd-pa-r >> nth=1").locator("select").selectOption("");
+  assert.equal(await lire("#hd-pa-rt"), "0,28 m²·K/W");
+  assert.equal(await lire("#hd-pa-u"), "3,60 W/(m²·K)");
+  // pont thermique : il disparaît avec l'isolation extérieure
+  assert.ok(await page.isVisible("#hd-pt-svg .hd-pt-fuite"));
+  await page.click(".hd-pt-b[data-m=ite]");
+  assert.ok(!(await page.isVisible("#hd-pt-svg .hd-pt-fuite")));
+  // vitrages (figures 5 et 6)
+  await page.click(".hd-vi-b[data-v=triple]");
+  assert.equal(await lire("#hd-vi-t"), "20 °C");
+  assert.equal(await lire("#hd-vi-uw"), "0,7 W/(m²·K)");
+  await page.click(".hd-vi-b[data-v=simple]");
+  assert.match(await lire("#hd-vi-txt"), /Hors du cadre « RE2020 »/);
+  // surface vitrée : 16 à 18 % de 100 m², la moitié au sud
+  assert.match(await lire("#hd-sv-out"), /Sud 50 % 8,0 à 9,0 m²[\s\S]*Total 16 à 18 % 16,0 à 18,0 m²/);
+  // ventilation : simple puis double flux
+  assert.ok(await page.locator("#hd-vmc-svg.m-sf").count());
+  await page.click(".hd-vmc-b[data-m=df]");
+  assert.ok(await page.locator("#hd-vmc-svg.m-df").count());
+  assert.match(await lire("#hd-vmc-txt"), /Double flux/);
+  // puits canadien : l'air d'été se rafraîchit
+  await page.click(".hd-pu-b[data-t='32']");
+  assert.equal(await lire("#hd-pu-tout"), "≈ 18,7 °C");
+  assert.match(await lire("#hd-pu-txt"), /se rafraîchit/);
+  // pompe à chaleur : étape 3, puis le COP
+  await page.click(".hd-pac-b[data-e='3']");
+  assert.ok(await page.locator("#hd-pac-cond.on").count());
+  assert.match(await lire("#hd-pac-txt"), /Étape 3\. Le fluide frigorigène réchauffe/);
+  await page.locator("#hd-cop-c").evaluate((e) => { e.value = "2"; e.dispatchEvent(new Event("input")); });
+  assert.equal(await lire("#hd-cop-e"), "4 500 kWh");
+  // bois : équivalences de la figure 13
+  assert.equal(await lire("#hd-bo-out tbody tr:nth-child(4) td"), "2 200 kg");
+  // programmation (figure 15) : 82 h de confort, puis toujours en confort
+  assert.equal(await lire("#hd-pg-c"), "82 h");
+  assert.equal(await lire("#hd-pg-g"), "≈ 11 %");
+  await page.click("#hd-pg-tout");
+  assert.equal(await lire("#hd-pg-c"), "168 h");
+  assert.equal(await lire("#hd-pg-g"), "aucune");
+  // champ photovoltaïque : 4 modules de 60 cellules en série, 2 chaînes
+  assert.equal(await lire("#hd-pv-u"), "4 × 30 = 120 V");
+  assert.equal(await lire("#hd-pv-pw"), "800 Wc (8 m²)");
+  assert.equal(await page.locator("#hd-pv-svg .hd-pv-mod").count(), 8);
+  assert.deepEqual(errors, []);
+  await context.close();
+});

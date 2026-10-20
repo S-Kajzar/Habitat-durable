@@ -7,9 +7,9 @@ depuis `index.html`. L'accueil présente les rubriques **Les cours**, **Les exer
 
 | Adresse | Contenu |
 |---|---|
-| `index.html` | accueil, en cartes illustrées à mots-clés ; chaque rubrique encore vide est annoncée par une carte « En cours d'édition » |
-| `?ex=cours-…` | un cours (à venir) |
-| `?ex=…` | un exercice ou une étude de cas (à venir), en mode entraînement ou en mode examen, avec sa note pondérée par la durée de ses parties |
+| `index.html` | accueil, en cartes illustrées à mots-clés ; une rubrique encore vide est annoncée par une carte « En cours d'édition » (aujourd'hui : les études de cas) |
+| `?ex=cours-habitat-durable` | Cours 1 — Habitat durable : concevoir et équiper une maison performante (Niveau 1) : maison bioclimatique au fil des saisons, déperditions, pont thermique, vitrages, ventilation simple et double flux animée, puits canadien, cycle de la pompe à chaleur, programmation ; simulateurs (compacité, paroi R, U, D, surface vitrée, COP, bois, champ photovoltaïque), cinq jeux, quiz de 12 questions |
+| `?ex=lecture-plan` | Exercice 1.1 — Lecture de plan : initiation (Niveau 1) : le dossier de plans d'un pavillon (perspective, façades, plans, coupe), 6 parties, 25 questions, 57 cases, 1 h, dont un schéma à compléter avec des étiquettes |
 
 Décisions et différences avec le dépôt d'origine : [`NOTE-DE-LIVRAISON.md`](NOTE-DE-LIVRAISON.md). Les exemples
 complets (exercice à étiquettes posées sur des schémas, QCM, cours interactifs animés) sont dans le dépôt
@@ -60,9 +60,9 @@ python3 src/generer.py           # écrit index.html
 ## Tester
 
 ```sh
-node --test tests/correction.test.js                          # gabarit inchangé, configuration, réponses de référence, étiquettes, schémas
+node --test tests/correction.test.js                          # gabarit inchangé, configuration, réponses de référence, étiquettes, schémas, écritures acceptées
 node --test tests/qcm.test.js                                 # QCM : bonnes réponses acceptées, toutes les autres refusées
-NODE_PATH=$(npm root -g) node --test tests/navigateur.test.js # accueil, chaque cours, chaque exercice en entraînement et en examen, documents
+NODE_PATH=$(npm root -g) node --test tests/navigateur.test.js # accueil, cours (jeux, quiz, figures, simulateurs), exercice en entraînement et en examen, documents
 ```
 
 Les tests lisent la page générée : chaque cours et chaque exercice ajoutés sont parcourus d'eux-mêmes (un sujet
@@ -74,10 +74,12 @@ ces parcours sont signalés « SKIP ».
 | Chemin | Rôle |
 |---|---|
 | `src/gabarit-exercice-interactif.html` | gabarit de référence (charte, moteurs de correction et d'application), repris du dépôt « Chaîne fonctionnelle » |
-| `src/generer.py` | contenu (exercices, documents, cours), accueil, aiguillage et assemblage |
+| `src/generer.py` | contenu (exercice 1.1 et ses documents), accueil, aiguillage et assemblage |
+| `src/cours_habitat.py` | cours 1 : texte du Word, figures SVG, comportement et style (préfixe `hd-`) |
+| `src/plans.py` | exercice 1.1 : schéma de la baie à compléter, redessiné en SVG avec ses cases |
 | `src/qcm.py` | QCM : questions à propositions, mises aux normes du gabarit |
 | `src/images/accueil.svg` | dessin de l'accueil (maison et leviers d'un habitat durable) |
-| `src/images/originaux/` | figures d'origine des contenus |
+| `src/images/originaux/` | figures d'origine : cours Word (`ch-*`, photos `ch-ph-*`), dossier de plans de l'exercice (`lp-*`) |
 | `src/images/` | figures intégrées en data URI (PNG quantifiés, photos, SVG), images des cartes de l'accueil |
 | `outils/preparer-images.sh` | quantification des figures, images des cartes de l'accueil (480 × 270) |
 | `tests/` | tests Node et Playwright ; `tests/reponses.js` : bonne réponse de chaque case |

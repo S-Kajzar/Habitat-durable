@@ -691,7 +691,7 @@ PARTS_LP.append({"title": "Lire la coupe : hauteurs et niveaux", "minutes": 15, 
         + calc("0,90 + 1,25 + 0,30 = 2,45 m") + " soit 2 450 mm (× 1 000). La coupe l'écrit aussi : « 245 "
         "minimum ».</p>"),
     Q("Quelle est la hauteur d'allège de la chambre 1 ?", "Une valeur et son unité.",
-      NUM(0.9, "m", variantes=[(90, "cm"), (900, "mm")], tol=1e-6, rel=0), "90 cm, soit 0,90 m",
+      NUM(90, "cm", variantes=[(0.9, "m"), (900, "mm")], tol=1e-6, rel=0), "90 cm, soit 0,90 m",
       "<p>La première cote au-dessus du plancher de la chambre 1 est <b>90</b> : l'allège mesure 90 cm, du sol fini "
       "au bas de la baie.</p>"),
     GRP("Quelle est la retombée de linteau de la chambre 1 ?", "En mètres, puis en millimètres.", [

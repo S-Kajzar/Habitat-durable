@@ -23,7 +23,7 @@ module.exports = {
     // Partie 4 — la coupe : hauteurs et niveaux
     a4_1_1: "Hauteur sous plafond", a4_1_2: "Retombée de linteau", a4_1_3: "Hauteur de la baie", a4_1_4: "Allège",
     a4_1_5: "Trumeau", a4_1_6: "Cote de niveau",
-    a4_2_1: "2,45", a4_2_2: "2450", a4_3: "0,90 m", a4_4_1: "0,30", a4_4_2: "300", a4_5: "−0,60", a4_6: "33",
+    a4_2_1: "2,45", a4_2_2: "2450", a4_3: "90 cm", a4_4_1: "0,30", a4_4_2: "300", a4_5: "−0,60", a4_6: "33",
     // Partie 5 — l'escalier
     a5_1: "14", a5_2: "2,60 m", a5_3: "185,7 mm",
     // Partie 6 — le pavillon est-il bioclimatique ?
