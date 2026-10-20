@@ -98,10 +98,11 @@ def e(s):
 
 
 def img(h, name, alt, caption, maxw, cls="fig hd-fig"):
-    """Image de src/images (JPEG, PNG ou SVG) en data URI, avec sa légende."""
-    src, w, hh = h.image(name)
-    return (f'<figure class="{cls}" style="max-width:{maxw}px"><img src="{src}" alt="{e(alt)}" width="{w}" '
-            f'height="{hh}" loading="lazy">' + (f"<figcaption>{caption}</figcaption>" if caption else "") + "</figure>")
+    """Image de src/images (JPEG, PNG ou SVG), avec sa légende ; image partagée : un exercice (QCM…) peut l'afficher
+    aussi sans que la page en contienne deux copies."""
+    w, hh = h.image_partagee(name)
+    return (f'<figure class="{cls}" style="max-width:{maxw}px"><img data-img="{name}" alt="{e(alt)}" width="{w}" '
+            f'height="{hh}">' + (f"<figcaption>{caption}</figcaption>" if caption else "") + "</figure>")
 
 
 def fleche(x1, y1, x2, y2, w, tete=None):

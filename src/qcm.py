@@ -3,7 +3,7 @@
 Chaque question est une question du gabarit à une seule case (mécanisme « fast-q ») : la case, masquée, reçoit le
 repère de la ou des propositions choisies ; le moteur Grading la corrige (« code » pour une réponse unique,
 « intset » pour plusieurs réponses). Modes entraînement et examen, note, récapitulatif et impression sont ceux du
-gabarit. Une image partagée par plusieurs questions n'est écrite qu'une fois dans la page (images_js).
+gabarit. Une image (partagée par plusieurs questions, ou avec un cours) n'est écrite qu'une fois dans la page.
 
 Les propositions s'affichent a, b, c… ; la case du gabarit reçoit leur rang (1, 2, 3…), que lit le moteur.
 Décrire un QCM dans src/generer.py :
@@ -18,7 +18,7 @@ import html
 import json
 import string
 
-IMAGES = {}  # images des questions : nom → (texte alternatif, largeur maximale), écrites une fois (images_js)
+IMAGES = {}  # images des questions : nom → (texte alternatif, largeur maximale)
 
 
 def QCM(stem, opts, correct, why, img=None, multi=None):
@@ -50,11 +50,11 @@ def render_qcm(b, h):
     """Une question : énoncé, image éventuelle, propositions ; la case du gabarit est masquée."""
     gid, label, fid = b["id"], b["label"], b["fids"][0]
     img = ""
-    if b["img"]:  # l'image n'est écrite qu'une fois dans la page (images_js) : plusieurs questions la partagent
+    if b["img"]:  # image partagée : écrite une fois dans la page, même si plusieurs questions ou un cours l'affichent
         name = b["img"]
         alt, maxw = IMAGES[name]
-        _src, w, hh = h.image(name)
-        img = (f'<figure class="fig" style="max-width:{maxw}px"><img data-qimg="{name}" alt="{html.escape(alt)}" '
+        w, hh = h.image_partagee(name)
+        img = (f'<figure class="fig" style="max-width:{maxw}px"><img data-img="{name}" alt="{html.escape(alt)}" '
                f'width="{w}" height="{hh}"></figure>')
     role = "group" if b["multi"] else "radiogroup"
     opts = "".join(f'<button type="button" class="qcm-o" data-k="{i + 1}" role="{"checkbox" if b["multi"] else "radio"}" '
@@ -102,16 +102,6 @@ QCM_CSS = """
 .qcm-rep{margin:0 0 6px}
 @media print{ .qcm-o{padding:2px 8px; font-size:9pt; break-inside:avoid} .qcm{break-inside:avoid} }
 """
-
-
-def images_js(h):
-    """Les images des QCM, une seule fois chacune, posées dans les questions à l'ouverture de la page."""
-    if not IMAGES:
-        return ""
-    data = {name: h.image(name)[0] for name in IMAGES}
-    return ("<script>(function () { var I = " + json.dumps(data) + ";\n"
-            "  Array.prototype.forEach.call(document.querySelectorAll(\"img[data-qimg]\"), function (im) { "
-            "im.src = I[im.getAttribute(\"data-qimg\")]; }); })();</script>")
 
 
 QCM_JS = r"""<script>/* QCM : un clic choisit une proposition (ou plusieurs) ; le repère va dans la case masquée du gabarit */

@@ -105,6 +105,26 @@ def image(name):
     raise FileNotFoundError(f"src/images/{name}.jpg, .png ou .svg introuvable")
 
 
+PARTAGEES = {}  # images partagées : nom → data URI, écrit une seule fois dans la page (images_js)
+
+
+def image_partagee(name):
+    """Image de src/images que plusieurs contenus peuvent afficher (cours, QCM, documents) : son data URI n'est écrit
+    qu'une fois dans la page ; la balise <img data-img="nom"> le reçoit à l'ouverture (images_js). Rend (l, h)."""
+    src, w, h = image(name)
+    PARTAGEES[name] = src
+    return w, h
+
+
+def images_js():
+    """Les images partagées, une fois chacune, posées dans les balises <img data-img> du contenu ouvert."""
+    if not PARTAGEES:
+        return ""
+    return ("<script>(function () { var I = " + json.dumps(PARTAGEES) + ";\n"
+            "  Array.prototype.forEach.call(document.querySelectorAll(\"img[data-img]\"), function (im) { "
+            "im.src = I[im.getAttribute(\"data-img\")]; }); })();</script>")
+
+
 # ============================================================ correcteurs (moteur Grading du gabarit)
 def P(*alts):
     """Motif de mots-clés : chaque argument liste des mots équivalents séparés par « | », en minuscules et sans
@@ -452,11 +472,18 @@ def prepare_exo(e):
                 "parts": parts_cfg, "qcfg": qcfg, "skcfg": {}}
 
 
+def docs_de(e):
+    """Documents d'un exercice : [(étiquette affichée, entrée de DOCS)]. Une entrée de "docs" est la clé d'un document,
+    ou (étiquette, clé) pour l'afficher sous une autre étiquette : deux exercices partagent ainsi un document, ou
+    numérotent chacun les leurs à partir de DT1."""
+    par_cle = {d[0]: d for d in DOCS}
+    return [(d, par_cle[d]) if isinstance(d, str) else (d[0], par_cle[d[1]]) for d in e["docs"]]
+
+
 def render_docs(e):
     rail, tabs, secs = [], [], []
     first_dt = True
-    for key, title, kind, is_dt, content in sorted((d for d in DOCS if d[0] in e["docs"]),
-                                                   key=lambda d: (d[3], d[0])):
+    for key, (_cle, title, kind, is_dt, content) in sorted(docs_de(e), key=lambda d: (d[1][3], d[0])):
         if is_dt and first_dt:
             rail.append('<div class="grp" aria-hidden="true"></div>')
             first_dt = False
@@ -474,8 +501,8 @@ def pastille(level):
 
 
 def render_exo_home(e):
-    src, w, h = image(e["hero"][0])
-    docs = sorted(e["docs"], key=lambda k: (k[:2] != "DP", k))
+    w, h = image_partagee(e["hero"][0])
+    docs = sorted((lab for lab, _d in docs_de(e)), key=lambda k: (k[:2] != "DP", k))
     docs_txt = (", ".join(docs[:-1]) + " et " + docs[-1]) if len(docs) > 1 else (docs[0] if docs else "")
     facts = ('<div class="home-facts">'
              f'<div><b>{len(e["P"])} parties</b><span>{e["n_q"]} questions</span></div>'
@@ -486,7 +513,7 @@ def render_exo_home(e):
               f'<div><b>{e["n_cases"]} cases</b><span>un point chacune</span></div></div>'))
     return (f'<div class="home-top"><div class="home-top-l"><header class="home-head"><span class="mc-tag">{e["tag"]}</span>{pastille(e.get("level"))}'
             f'<h1 id="home-title">{e["title"]}</h1><p class="home-sub">{e["sub"]}</p></header>{facts}</div>'
-            f'<figure class="home-hero"><img src="{src}" alt="{esc(e["hero"][1])}" width="{w}" height="{h}">'
+            f'<figure class="home-hero"><img data-img="{e["hero"][0]}" alt="{esc(e["hero"][1])}" width="{w}" height="{h}">'
             f'<figcaption class="small">{e["hero"][2]}</figcaption></figure></div>')
 
 
@@ -536,8 +563,8 @@ def LU(v):
 
 
 def illustration(name, alt, maxw, caption=""):
-    src, w, h = image(name)
-    return (f'<figure class="fig" style="max-width:{maxw}px"><img src="{src}" alt="{esc(alt)}" width="{w}" height="{h}">'
+    w, h = image_partagee(name)
+    return (f'<figure class="fig" style="max-width:{maxw}px"><img data-img="{name}" alt="{esc(alt)}" width="{w}" height="{h}">'
             + (f"<figcaption>{caption}</figcaption>" if caption else "") + "</figure>")
 
 
@@ -1109,12 +1136,13 @@ COURS_COMMUN_CSS = """
 
 # ============================================================ COURS — assemblage
 # le QCM reçoit les fonctions d'images du générateur
-AIDES_QCM = types.SimpleNamespace(png=png, jpg=jpg, image=image, IMAGES=IMAGES)
+AIDES_QCM = types.SimpleNamespace(png=png, jpg=jpg, image=image, image_partagee=image_partagee, IMAGES=IMAGES)
 
 # un cours peut vivre dans son propre module (src/cours_….py) ; il reçoit les éléments communs des cours
 AIDES_COURS = types.SimpleNamespace(course_head=course_head, course_section=course_section, course_nav=course_nav,
                                     quiz_section=quiz_section, jeu_html=jeu_html, HOUSE=HOUSE, figure=figure,
-                                    photo=photo, image=image, esc=esc, fr=fr, frac=frac)
+                                    photo=photo, image=image, image_partagee=image_partagee, esc=esc,
+                                    fr=fr, frac=frac)
 COURS_JS = (COURS_COMMUN_JS + "".join(c.get("js", "") for c in COURS) +
             "\n  var INIT = { " + ", ".join(f'"{c["key"]}": {c["init"]}' for c in COURS if c.get("init")) + " };\n")
 COURS_CSS = COURS_COMMUN_CSS + "".join(c.get("css", "") for c in COURS)
@@ -1525,8 +1553,12 @@ def verifier():
     prefixes = [e["prefix"] for e in EXO_DEFS]
     assert len(set(prefixes)) == len(prefixes), f"préfixe d'exercice en double : {prefixes}"
     docs = {d[0] for d in DOCS}
+    assert len(docs) == len(DOCS), "clé de document en double dans DOCS"
     for e in EXO_DEFS:
-        assert set(e["docs"]) <= docs, f"{e['key']} : document inconnu {set(e['docs']) - docs}"
+        cles = [d if isinstance(d, str) else d[1] for d in e["docs"]]
+        etiq = [d if isinstance(d, str) else d[0] for d in e["docs"]]
+        assert set(cles) <= docs, f"{e['key']} : document inconnu {set(cles) - docs}"
+        assert len(set(etiq)) == len(etiq), f"{e['key']} : étiquette de document en double {etiq}"
     for c in LIENS:
         assert c["rubrique"] in ("ressources", "exercices"), c["title"]
 
@@ -1662,7 +1694,7 @@ def build():
 {grading}
 {app}
 {ETIQUETTES_JS}
-{qcm.images_js(AIDES_QCM)}
+{images_js()}
 {qcm.QCM_JS}
 </body>
 </html>
