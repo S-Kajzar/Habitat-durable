@@ -814,7 +814,8 @@ def render(h):
                ("hd-enr", "Énergies renouvelables"), ("hd-conso", "Consommation"), ("hd-prod", "Production"),
                ("hd-syn", "Synthèse"), ("hd-quiz", "Quiz")])}
 {s1}{s2}{s3}{s4}{s5}{s6}{s7}{s8}
-<div class="cours-foot no-print"><a class="btn" href="?ex=lecture-plan">S'entraîner : lecture de plan</a>
+<div class="cours-foot no-print"><a class="btn" href="?ex=qcm-re2020">Réviser : QCM La maison RE2020</a>
+<a class="btn ghost" href="?ex=isoler-paroi">S'entraîner : isoler une paroi</a>
 <button type="button" class="btn ghost cours-print">Imprimer le cours</button>
 <a class="btn ghost" href="?">{h.HOUSE} Retour à l'accueil</a></div>
 </div>"""

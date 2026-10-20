@@ -49,6 +49,7 @@ remplir "$SRC/lp-perspective.png"          carte-ex11.png    "-colors 256"     #
 convert "$SRC/ch-fig03-isolation-interieure.png" -crop 50%x100%+0+0 +repage "$OUT/carte-ex12-src.png"
 remplir "$OUT/carte-ex12-src.png" carte-ex12.jpg "-quality 82" && rm "$OUT/carte-ex12-src.png"
 remplir "$SRC/ch-fig10-solaire-combine.png" carte-qcm.jpg "-quality 82"       # QCM 1.3 : système solaire combiné
+remplir "$SRC/lp-facades.png"              carte-etude.png   "-colors 256" north  # étude 1 : la façade ouest du pavillon
 
 images=("$OUT"/*.png "$OUT"/*.jpg)
 if [ ${#images[@]} -gt 0 ]; then

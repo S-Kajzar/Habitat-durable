@@ -46,4 +46,28 @@ module.exports = {
     // Partie 4 — comparer et choisir
     b4_1: "0,26 m²·K/W", b4_2: "96 W/K", b4_3: "13", b4_4: "12,8 cm", b4_5: "14 cm", b4_6: "3,80 m",
   },
+  // Étude de cas 1 — Le pavillon face à la RE2020 (?ex=etude-pavillon)
+  "etude-pavillon": {
+    // Partie 1 — le plan est-il bioclimatique ?
+    d1_1_1: "Sud", d1_1_2: "Est", d1_1_3: "Ouest", d1_1_4: "Ouest", d1_1_5: "Nord",
+    d1_2_1: "Conforme aux principes", d1_2_2: "Conforme aux principes", d1_2_3: "Conforme aux principes",
+    d1_2_4: "Contraire aux principes", d1_2_5: "Conforme aux principes",
+    d1_3: "Un brise-soleil",
+    // Partie 2 — la compacité
+    d2_1_1: "270", d2_1_2: "258", d2_1_3: "0,96", d2_2_1: "270", d2_2_2: "321", d2_2_3: "1,19",
+    d2_3: "La forme à étage", d2_4: "63 m²",
+    // Partie 3 — les vitrages
+    d3_1_1: "5,16", d3_1_2: "8,46", d3_1_3: "3,33", d3_1_4: "0", d3_2: "16,95 m²", d3_3: "15,7", d3_4: "Non",
+    d3_5_1: "30", d3_5_2: "50", d3_5_3: "20", d3_5_4: "0", d3_6_1: "Ouest", d3_6_2: "Sud",
+    d3_7_1: "50,9", d3_7_2: "25,4", d3_8: "610 W",
+    // Partie 4 — le chauffage
+    d4_1: "1 800 kWh", d4_2: "3 600 kWh", d4_3: "1 188 kg", d4_4: "540 L",
+    d4_5_1: "Admise par la RE2020", d4_5_2: "Admise par la RE2020", d4_5_3: "Abandonnée par la RE2020",
+    d4_5_4: "Abandonnée par la RE2020",
+    // Partie 5 — produire de l'électricité
+    d5_1: "0,99 m", d5_2: "3,16 m", d5_3: "28,4 m²", d5_4: "16", d5_5: "1 600 Wc", d5_6: "144 V", d5_7: "1 600 kWh",
+    d5_8: "89",
+    // Partie 6 — bilan
+    d6_1_1: "Atout", d6_1_2: "Point à améliorer", d6_1_3: "Atout", d6_1_4: "Atout", d6_1_5: "Point à améliorer",
+  },
 };

@@ -1158,6 +1158,225 @@ PARTS_QCM = [
     ]),
 ]
 
+# ============================================================ ÉTUDE DE CAS 1 — LE PAVILLON FACE À LA RE2020
+# Le pavillon de l'exercice 1.1 jugé avec les notions du cours : plan bioclimatique, compacité, vitrages, chauffage,
+# production photovoltaïque, bilan. Données et hypothèses de l'étude : DT5 (« ep-DT5 »). Les baies et leurs surfaces
+# sont données (le relevé des menuiseries n'est pas demandé) ; le toit de la partie à étage a son faîtage nord-sud :
+# ses versants regardent l'est et l'ouest.
+E_CONFORME = ["Conforme aux principes", "Contraire aux principes"]
+E_BILAN = ["Atout", "Point à améliorer"]
+E_RE2020 = ["Admise par la RE2020", "Abandonnée par la RE2020"]
+CONFORME, CONTRAIRE = KW(P("conforme")), KW(P("contraire"))
+ATOUT, A_AMELIORER = KW(P("atout")), KW(P("ameliorer"))
+
+
+def VAL(v, tol):
+    """Valeur calculée sans unité (l'unité est dans le libellé de la case), juste à tol près."""
+    return NUM(v, tol=tol, rel=0)
+
+
+PARTS_EP = []
+
+# ------------------------------------------------------------ Partie 1 : le plan bioclimatique
+PARTS_EP.append({"title": "Le plan est-il bioclimatique ?", "minutes": 15, "intro": [
+    "<p>Une maison bioclimatique ouvre ses pièces de vie au sud, place ses chambres à l'est, ferme sa façade nord et "
+    "y range ses espaces tampons (partie 1 du cours). Le pavillon suit-il ces principes ? La flèche du Nord est sur le "
+    "plan du rez-de-chaussée (DT2).</p>"],
+    "blocks": [
+    QBAR(["DP1", "DT1", "DT2", "DT3"]),
+    GRP("Vers quel point cardinal ces baies et cette façade regardent-elles ?", "Une étiquette par case.", [
+        ("Porte-fenêtre de la cuisine", KW(P("sud")), "Sud"),
+        ("Fenêtre de la chambre 3", KW(P("est")), "Est"),
+        ("Fenêtres des chambres 1 et 2", KW(P("ouest")), "Ouest"),
+        ("Porte-fenêtre de la chambre 4", KW(P("ouest")), "Ouest"),
+        ("Façade sans aucune ouverture", KW(P("nord")), "Nord")],
+        "<p>La flèche du Nord pointe vers la droite du plan : le haut est à l'ouest, le bas à l'est, la gauche au sud. "
+        "La cuisine et le séjour ont leur porte-fenêtre au <b>sud</b> ; la chambre 3 et les bains, à l'<b>est</b> ; "
+        "les chambres 1, 2 et 4 (et le séjour) à l'<b>ouest</b> ; la façade <b>nord</b> n'a aucune ouverture.</p>",
+        etiquettes=E_ORIENT, liste="Orientations"),
+    GRP("Ces dispositions sont-elles conformes aux principes de l'architecture bioclimatique ?", "Compare avec la "
+        "partie 1 du cours.", [
+        ("Séjour et cuisine ouverts au sud", CONFORME, "Conforme aux principes"),
+        ("Façade nord sans ouverture", CONFORME, "Conforme aux principes"),
+        ("Garage non chauffé au nord", CONFORME, "Conforme aux principes"),
+        ("Chambres 1, 2 et 4 ouvertes à l'ouest", CONTRAIRE, "Contraire aux principes"),
+        ("Chambre 3 ouverte à l'est", CONFORME, "Conforme aux principes")],
+        "<p>Les pièces de vie profitent du sud, la façade nord est fermée et le garage fait tampon : le plan suit "
+        "l'essentiel des principes. Mais trois chambres sur quatre regardent l'<b>ouest</b> : elles reçoivent le "
+        "soleil de l'après-midi et restent chaudes le soir, quand le cours les place à l'est (soleil du matin, "
+        "fraîcheur le soir). Seule la chambre 3 est bien orientée.</p>", etiquettes=E_CONFORME, liste="Principes"),
+    Q("Quel élément d'architecture, absent des façades, éviterait les surchauffes d'été derrière les baies du sud ?",
+      "Un élément cité dans la partie 1 du cours.",
+      KW(P("brise|casquette|pergola|auvent|avancee|debord|store|tonnelle")), "Un brise-soleil (ou une casquette, une "
+      "pergola)",
+      "<p>Un <b>brise-soleil</b> (casquette, pergola, avancée de toit) au-dessus des baies du sud arrête le soleil "
+      "haut de l'été (environ 67° à midi) et laisse entrer le soleil bas de l'hiver (environ 21°). Les volets pleins "
+      "protègent aussi, mais en privant la pièce de lumière.</p>"),
+]})
+
+# ------------------------------------------------------------ Partie 2 : la compacité
+PARTS_EP.append({"title": "La compacité", "minutes": 15, "intro": [
+    "<p>Pour comparer des formes, on assimile la maison à un pavé de même surface habitable (DT5) : V = L × l × h ; "
+    "S<sub>p</sub> = 2 × L × l + 2 × (L + l) × h (murs, toiture et plancher bas, tous déperditifs) ; "
+    "<b>C = S<sub>p</sub> / V</b>.</p>"],
+    "blocks": [
+    QBAR(["DT3", "DT5"]),
+    GRP("Calcule le volume, la surface des parois déperditives et le facteur de compacité de la forme à étage.",
+        "Pavé de 9,00 m × 6,00 m (l'emprise de l'étage, DT3), sur deux niveaux de 2,5 m.", [
+        ("Volume V (m³)", VAL(270, 0.5), "270"), ("Parois déperditives S<sub>p</sub> (m²)", VAL(258, 0.5), "258"),
+        ("Facteur de compacité C (m²/m³)", VAL(0.956, 0.006), "0,96")],
+        "<p>Hauteur : 2 × 2,5 = 5 m. " + calc("V = 9 × 6 × 5 = 270 m³") + " "
+        + calc("S<sub>p</sub> = 2 × 9 × 6 + 2 × (9 + 6) × 5 = 108 + 150 = 258 m²") + " "
+        + calc("C = 258 / 270 ≈ 0,96 m²/m³") + "</p>"),
+    GRP("Même calcul pour une maison de plain-pied de même surface habitable.", "Pavé de 12,00 m × 9,00 m, sur un "
+        "niveau de 2,5 m.", [
+        ("Volume V (m³)", VAL(270, 0.5), "270"), ("Parois déperditives S<sub>p</sub> (m²)", VAL(321, 0.5), "321"),
+        ("Facteur de compacité C (m²/m³)", VAL(1.189, 0.006), "1,19")],
+        "<p>" + calc("V = 12 × 9 × 2,5 = 270 m³") + " : le même volume chauffé. "
+        + calc("S<sub>p</sub> = 2 × 12 × 9 + 2 × (12 + 9) × 2,5 = 216 + 105 = 321 m²") + " "
+        + calc("C = 321 / 270 ≈ 1,19 m²/m³") + "</p>"),
+    Q("Quelle forme est la plus compacte ?", "Plain-pied ou à étage.", KW(P("etage")), "La forme à étage",
+      "<p>La forme <b>à étage</b> : C ≈ 0,96 m²/m³ contre 1,19. La compacité est la meilleure quand C est le plus "
+      "faible.</p>"),
+    Q("Combien de mètres carrés de parois déperditives la forme à étage économise-t-elle ?", "Une valeur et son unité.",
+      NUM(63, "m²", tol=0.5, rel=0), "63 m²",
+      "<p>" + calc("321 − 258 = 63 m²") + " de toiture et de plancher bas en moins pour le même volume chauffé : "
+      "autant de surface par où la chaleur ne s'échappe pas.</p>"),
+]})
+
+# ------------------------------------------------------------ Partie 3 : les vitrages
+PARTS_EP.append({"title": "Les vitrages", "minutes": 20, "intro": [
+    "<p>Le DT5 donne les baies vitrées de la partie chauffée, avec leur surface et leur orientation. Le cours "
+    "recommande une surface vitrée de 16 à 18 % de la surface habitable, répartie à 50 % au sud, 20 à 30 % à l'est, "
+    "20 % à l'ouest et 0 à 10 % au nord.</p>"],
+    "blocks": [
+    QBAR(["DT5"]),
+    GRP("Calcule la surface vitrée de chaque orientation.", "En m², au centième.", [
+        ("Sud (m²)", VAL(5.16, 0.01), "5,16"), ("Ouest (m²)", VAL(8.46, 0.01), "8,46"),
+        ("Est (m²)", VAL(3.33, 0.01), "3,33"), ("Nord (m²)", VAL(0, 0.001), "0")],
+        "<ul><li>Sud : " + calc("2,58 + 2,58 = 5,16 m²") + "</li><li>Ouest : "
+        + calc("2,58 + 2,58 + 0,30 + 1,50 + 1,50 = 8,46 m²") + "</li><li>Est : " + calc("1,26 + 1,50 + 0,57 = 3,33 m²")
+        + "</li><li>Nord : aucune baie.</li></ul>"),
+    Q("Calcule la surface vitrée totale.", "Une valeur et son unité.", NUM(16.95, "m²", tol=0.02, rel=0), "16,95 m²",
+      "<p>" + calc("5,16 + 8,46 + 3,33 + 0 = 16,95 m²") + "</p>"),
+    Q("Quel pourcentage de la surface habitable la surface vitrée représente-t-elle ?", "En %, au dixième.",
+      VAL(15.7, 0.1), "15,7 %",
+      "<p>" + calc("16,95 ÷ 108 × 100 ≈ 15,7 %") + "</p>"),
+    Q("La surface vitrée respecte-t-elle la recommandation du cours ?", "Réponds par oui ou non.", OUI_NON(False),
+      "Non, elle est un peu faible",
+      "<p><b>Non</b> : 15,7 %, c'est un peu moins que les 16 à 18 % recommandés. Il manque environ 0,3 m² de vitrage "
+      "(16 % de 108 m² = 17,3 m²).</p>"),
+    GRP("Quelle part de la surface vitrée chaque orientation représente-t-elle ?", "En %, à l'unité.", [
+        ("Sud (%)", VAL(30.4, 0.6), "30"), ("Ouest (%)", VAL(49.9, 0.6), "50"),
+        ("Est (%)", VAL(19.6, 0.6), "20"), ("Nord (%)", VAL(0, 0.001), "0")],
+        "<p>" + calc("5,16 ÷ 16,95 ≈ 30 %") + " au sud, " + calc("8,46 ÷ 16,95 ≈ 50 %") + " à l'ouest, "
+        + calc("3,33 ÷ 16,95 ≈ 20 %") + " à l'est, 0 % au nord.</p>"),
+    GRP("Compare avec la répartition recommandée.", "Une étiquette par case.", [
+        ("Orientation trop vitrée", KW(P("ouest")), "Ouest"),
+        ("Orientation pas assez vitrée", KW(P("sud")), "Sud")],
+        "<p>L'<b>ouest</b> reçoit 50 % des vitrages au lieu de 20 % ; le <b>sud</b>, 30 % au lieu de 50 %. L'est (20 %) "
+        "et le nord (0 %) sont dans les recommandations. Les grandes baies de la façade A captent le soleil de "
+        "l'après-midi : en été, c'est un risque de surchauffe.</p>", etiquettes=E_ORIENT, liste="Orientations"),
+    GRP("Calcule la déperdition de l'ensemble des vitrages, D = U<sub>w</sub> × S, selon le vitrage.", "En W/K, au "
+        "dixième ; U<sub>w</sub> en W/(m²·K) (DT5).", [
+        ("Double vitrage standard (U<sub>w</sub> = 3) : D (W/K)", VAL(50.85, 0.3), "50,9"),
+        ("Double vitrage peu émissif VIR (U<sub>w</sub> = 1,5) : D (W/K)", VAL(25.43, 0.3), "25,4")],
+        "<p>" + calc("D = 3 × 16,95 ≈ 50,9 W/K") + " avec un double vitrage standard ; "
+        + calc("D = 1,5 × 16,95 ≈ 25,4 W/K") + " avec le vitrage peu émissif du pavillon : deux fois moins.</p>"),
+    Q("Quelle puissance le vitrage peu émissif fait-il économiser quand il fait 19 °C dedans et −5 °C dehors ?",
+      "P = D × écart de température ; une valeur et son unité.", NUM(610, "W", tol=10, rel=0), "Environ 610 W",
+      "<p>L'écart de température est de 24 K : " + calc("(50,9 − 25,4) × 24 ≈ 610 W") + " de moins à fournir par le "
+      "chauffage, à chaque heure de grand froid.</p>"),
+]})
+
+# ------------------------------------------------------------ Partie 4 : le chauffage
+PARTS_EP.append({"title": "Le chauffage", "minutes": 15, "intro": [
+    "<p>Le besoin annuel de chauffage du pavillon est estimé à 5 400 kWh (DT5). Deux générateurs sont envisagés : "
+    "une pompe à chaleur air/eau de COP 3, ou une chaudière à granulés de bois.</p>"],
+    "blocks": [
+    QBAR(["DT5"]),
+    Q("Quelle énergie électrique la pompe à chaleur consomme-t-elle dans l'année ?", "COP = W<sub>thermique</sub> / "
+      "W<sub>électrique</sub> ; une valeur et son unité.", NUM(1800, "kWh", tol=1, rel=0), "1 800 kWh",
+      "<p>" + calc("W<sub>électrique</sub> = 5 400 / 3 = 1 800 kWh") + "</p>"),
+    Q("Quelle chaleur la pompe à chaleur puise-t-elle gratuitement dans l'air extérieur ?", "Une valeur et son unité.",
+      NUM(3600, "kWh", tol=1, rel=0), "3 600 kWh",
+      "<p>" + calc("5 400 − 1 800 = 3 600 kWh") + " : les deux tiers de la chaleur viennent de l'air, une énergie "
+      "renouvelable.</p>"),
+    Q("Quelle masse de granulés la chaudière à granulés brûlerait-elle dans l'année ?", "Équivalences de la figure 13 "
+      "du cours (DT5) ; une valeur et son unité.", NUM(1188, "kg", variantes=[(1.188, "t")], tol=6, rel=0),
+      "1 188 kg, soit environ 1,2 t",
+      "<p>1 000 kWh = 220 kg de granulés : " + calc("5,4 × 220 = 1 188 kg") + " soit environ 1,2 tonne, à stocker "
+      "près de la chaudière.</p>"),
+    Q("Quel volume de fioul une chaudière fioul brûlerait-elle pour le même besoin ?", "Une valeur et son unité.",
+      NUM(540, "L", accepte=("litres", "litre"), tol=1, rel=0), "540 L",
+      "<p>1 000 kWh = 100 litres de fioul : " + calc("5,4 × 100 = 540 L") + "</p>"),
+    GRP("Ces générateurs de chaleur sont-ils admis dans une maison neuve soumise à la RE2020 ?", "Une étiquette par "
+        "case.", [
+        ("Pompe à chaleur air/eau", KW(P("admise")), "Admise par la RE2020"),
+        ("Chaudière à granulés de bois", KW(P("admise")), "Admise par la RE2020"),
+        ("Chaudière fioul", KW(P("abandonnee")), "Abandonnée par la RE2020"),
+        ("Chaudière gaz", KW(P("abandonnee")), "Abandonnée par la RE2020")],
+        "<p>La RE2020 abandonne les chaudières <b>fioul</b> et <b>gaz</b>, qui brûlent des énergies fossiles. La "
+        "pompe à chaleur (énergie de l'air) et la chaudière à granulés (bois issu de forêts gérées durablement) "
+        "utilisent des énergies renouvelables.</p>", etiquettes=E_RE2020, liste="RE2020"),
+]})
+
+# ------------------------------------------------------------ Partie 5 : produire de l'électricité
+PARTS_EP.append({"title": "Produire de l'électricité", "minutes": 20, "intro": [
+    "<p>Le toit de la partie à étage a son faîtage orienté nord-sud : ses deux versants regardent l'est et l'ouest. On "
+    "étudie des modules photovoltaïques sur le versant ouest (DT5). La pente du toit est donnée sur la coupe (DT4) : "
+    "33 %, soit 33 cm de hauteur pour 1 m à l'horizontale.</p>"],
+    "blocks": [
+    QBAR(["DT4", "DT5"]),
+    Q("De quelle hauteur le faîtage dépasse-t-il le bas du versant ?", "Le versant s'étend sur 3,00 m à l'horizontale "
+      "(DT5) ; une valeur et son unité.", NUM(0.99, "m", variantes=[(99, "cm")], tol=0.005, rel=0), "0,99 m",
+      "<p>" + calc("h = 3,00 × 0,33 = 0,99 m") + "</p>"),
+    Q("Calcule la longueur du versant, mesurée dans sa pente (le rampant).", "Théorème de Pythagore ; une valeur et "
+      "son unité, au centième.", NUM(3.159, "m", variantes=[(315.9, "cm")], tol=0.011, rel=0), "3,16 m",
+      "<p>" + calc("√(3,00² + 0,99²) = √9,98 ≈ 3,16 m") + "</p>"),
+    Q("Calcule la surface du versant ouest.", "Le versant mesure 9,00 m le long du faîtage ; une valeur et son unité.",
+      NUM(28.43, "m²", tol=0.15, rel=0), "28,4 m²",
+      "<p>" + calc("S = 9,00 × 3,16 ≈ 28,4 m²") + "</p>"),
+    Q("Combien de modules de 1,00 m × 1,00 m peut-on poser, en laissant libre une bande de 0,50 m sur tout le pourtour "
+      "du versant ?", "Un nombre entier de modules dans chaque direction.", LU(16), "16 modules",
+      "<p>Longueur utile : 9,00 − 2 × 0,50 = 8,00 m, soit 8 modules. Largeur utile : 3,16 − 2 × 0,50 = 2,16 m, soit "
+      "2 rangées (une troisième ne tient pas). " + calc("8 × 2 = 16 modules") + "</p>"),
+    Q("Quelle est la puissance crête de l'installation ?", "Un module de 1 m² : 100 Wc ; une valeur et son unité.",
+      NUM(1600, "Wc", variantes=[(1.6, "kWc")], tol=1, rel=0), "1 600 Wc, soit 1,6 kWc",
+      "<p>" + calc("16 × 100 = 1 600 Wc = 1,6 kWc") + "</p>"),
+    Q("Les modules sont câblés en chaînes de 8 modules en série. Quelle est la tension d'une chaîne ?",
+      "Un module : 36 cellules de 0,5 V en série (DT5) ; une valeur et son unité.", NUM(144, "V", tol=0.5, rel=0),
+      "144 V",
+      "<p>Un module : " + calc("36 × 0,5 = 18 V") + " ; une chaîne : " + calc("8 × 18 = 144 V") + " En série, les "
+      "tensions s'additionnent ; les deux chaînes, en parallèle, additionnent leurs courants.</p>"),
+    Q("Quelle énergie l'installation produit-elle dans l'année ?", "Production du versant ouest (DT5) ; une valeur et "
+      "son unité.", NUM(1600, "kWh", tol=1, rel=0), "1 600 kWh",
+      "<p>" + calc("1,6 kWc × 1 000 kWh/kWc = 1 600 kWh par an") + "</p>"),
+    Q("Quelle part de l'électricité consommée par la pompe à chaleur cette production couvre-t-elle sur l'année ?",
+      "En %, à l'unité (partie 4).", VAL(88.9, 0.6), "Environ 89 %",
+      "<p>" + calc("1 600 ÷ 1 800 × 100 ≈ 89 %") + " Sur l'année, le toit produit presque l'électricité du chauffage ; "
+      "mais le soleil donne surtout l'été, quand la pompe à chaleur tourne peu : l'énergie est alors injectée dans le "
+      "réseau.</p>"),
+]})
+
+# ------------------------------------------------------------ Partie 6 : le bilan
+PARTS_EP.append({"title": "Bilan : les atouts et les points à améliorer", "minutes": 5, "intro": [
+    "<p>Reprends tes résultats : qu'est-ce qui rapproche le pavillon des exigences de la RE2020, et qu'est-ce qu'il "
+    "faudrait revoir ?</p>"],
+    "blocks": [
+    GRP("Classe chaque caractéristique du pavillon.", "Une étiquette par case.", [
+        ("Forme à étage, compacte (partie 2)", ATOUT, "Atout"),
+        ("Vitrages surtout tournés vers l'ouest (partie 3)", A_AMELIORER, "Point à améliorer"),
+        ("Double vitrage peu émissif à l'argon (partie 3)", ATOUT, "Atout"),
+        ("Chauffage par pompe à chaleur (partie 4)", ATOUT, "Atout"),
+        ("Chambres 1, 2 et 4 ouvertes à l'ouest (partie 1)", A_AMELIORER, "Point à améliorer")],
+        "<p><b>Atouts</b> : une forme compacte, un vitrage peu émissif qui divise par deux les pertes des baies, une "
+        "pompe à chaleur qui puise deux tiers de sa chaleur dans l'air, et un toit capable de produire presque "
+        "l'électricité qu'elle consomme. <b>À améliorer</b> : l'orientation, avec trop de baies et de chambres à "
+        "l'ouest, sans protection contre le soleil d'été. Ces choix se font sur le plan, avant de construire : "
+        "ils ne coûtent rien.</p>", etiquettes=E_BILAN, liste="Bilan"),
+]})
+
 # ============================================================ DOCUMENTS (dossiers de présentation et techniques)
 # (clé, titre, nature, dossier technique ?, contenu HTML) ; un exercice cite les clés de ses documents dans "docs".
 DOCS = [
@@ -1254,6 +1473,39 @@ DOCS = [
      "<h3>Le pan de mur étudié</h3><ul><li>Surface : <b>25 m²</b>, baies déduites.</li><li>Températures : "
      "<b>19 °C</b> dans la maison, <b>−5 °C</b> dehors (température extérieure de base, un jour froid d'hiver)."
      "</li></ul></div>"),
+    # étude de cas 1 (affiché DT5, après les plans du pavillon)
+    ("ep-DT5", "Données et hypothèses de l'étude", "Dossier technique", True,
+     '<div class="doc-text"><h3>Le pavillon</h3><p>Surface habitable : environ <b>108 m²</b> (rez-de-chaussée et étage, '
+     "estimée d'après les plans DT2 et DT3).</p>"
+     "<h3>Compacité : deux formes comparées</h3><p>On assimile la maison à un pavé de même surface habitable. Hauteur "
+     "d'un niveau : 2,5 m. Murs, toiture et plancher bas sont tous des parois déperditives.</p><ul>"
+     "<li><b>Forme à étage</b> : 9,00 m × 6,00 m (l'emprise de l'étage, DT3), sur deux niveaux.</li>"
+     "<li><b>Forme de plain-pied</b> : 12,00 m × 9,00 m, sur un niveau.</li></ul>"
+     "<p>V = L × l × h ; S<sub>p</sub> = 2 × L × l + 2 × (L + l) × h ; C = S<sub>p</sub> / V.</p>"
+     '<h3>Les baies vitrées de la partie chauffée</h3><table class="t"><thead><tr><th>Pièce</th><th>Baie</th>'
+     "<th>Largeur / hauteur (cm)</th><th>Surface (m²)</th><th>Orientation</th></tr></thead><tbody>"
+     "<tr><td>Salon séjour</td><td>porte-fenêtre</td><td>120/215</td><td>2,58</td><td>Sud</td></tr>"
+     "<tr><td>Cuisine</td><td>porte-fenêtre</td><td>120/215</td><td>2,58</td><td>Sud</td></tr>"
+     "<tr><td>Salon séjour</td><td>porte-fenêtre</td><td>120/215</td><td>2,58</td><td>Ouest</td></tr>"
+     "<tr><td>Chambre 4</td><td>porte-fenêtre</td><td>120/215</td><td>2,58</td><td>Ouest</td></tr>"
+     "<tr><td>Douche</td><td>fenêtre</td><td>40/75 *</td><td>0,30</td><td>Ouest</td></tr>"
+     "<tr><td>Chambre 1</td><td>fenêtre</td><td>120/125</td><td>1,50</td><td>Ouest</td></tr>"
+     "<tr><td>Chambre 2</td><td>fenêtre</td><td>120/125</td><td>1,50</td><td>Ouest</td></tr>"
+     "<tr><td>Cuisine</td><td>fenêtre</td><td>120/105</td><td>1,26</td><td>Est</td></tr>"
+     "<tr><td>Chambre 3</td><td>fenêtre</td><td>120/125</td><td>1,50</td><td>Est</td></tr>"
+     "<tr><td>Bains</td><td>fenêtre</td><td>60/95</td><td>0,57</td><td>Est</td></tr>"
+     "</tbody></table><p>La porte d'entrée (pleine) et la porte du garage (local non chauffé) ne sont pas comptées. "
+     "* Hauteur de la fenêtre de la douche supposée : elle n'est pas cotée sur les plans.</p>"
+     "<p>Vitrage du pavillon : double vitrage peu émissif 4/16/4 à l'argon (VIR), U<sub>w</sub> = 1,5 W/(m²·K). "
+     "Double vitrage standard : U<sub>w</sub> = 3 W/(m²·K) (valeurs du cours).</p>"
+     "<h3>Le chauffage</h3><ul><li>Besoin annuel de chauffage : <b>5 400 kWh</b> (hypothèse de l'étude : 50 kWh par m² "
+     "habitable).</li><li>Pompe à chaleur air/eau : COP annuel de <b>3</b>.</li><li>Équivalences de la figure 13 du "
+     "cours : 1 000 kWh = 220 kg de granulés = 3/4 de stère de bûches = 100 litres de fioul.</li></ul>"
+     "<h3>Le photovoltaïque</h3><ul><li>Versant ouest de la partie à étage : 9,00 m le long du faîtage, 3,00 m à "
+     "l'horizontale (la moitié des 6,00 m), pente 33 % (DT4).</li><li>Modules de 1,00 m × 1,00 m : 100 Wc, 36 "
+     "cellules de 0,5 V en série.</li><li>Pose : une bande libre de 0,50 m sur tout le pourtour du versant.</li>"
+     "<li>Production : environ <b>1 000 kWh par kWc</b> installé et par an sur ce versant (hypothèse de l'étude)."
+     "</li></ul></div>"),
 ]
 
 
@@ -1297,6 +1549,17 @@ EXO_DEFS = [
      "sub": "Un questionnaire à choix multiples pour réviser tout le cours 1 : architecture bioclimatique, "
             "déperditions et isolation, renouvellement de l'air, chaleur d'origine renouvelable, maîtrise des "
             "consommations, production d'électricité. Idéal en mode examen."},
+    {"key": "etude-pavillon", "prefix": "d", "tag": "Étude 1", "level": "Niveau 2", "etude": True,
+     "title": "Le pavillon face à la RE2020", "parts": PARTS_EP,
+     "docs": ["DP1", "DT1", "DT2", "DT3", "DT4", ("DT5", "ep-DT5")],
+     "consignes": CONSIGNES_MODES + CONSIGNES_SAISIE + CONSIGNES_ETIQUETTES + CONSIGNES_DOCS + CONSIGNES_BAREME,
+     "hero": ("lp-facades", "Façades A et B du pavillon : partie à étage, avancée, porches et portes-fenêtres",
+              "Le pavillon de l'exercice 1.1, jugé avec les notions du cours."),
+     "mots": ["Bioclimatique", "Compacité", "Vitrages", "Pompe à chaleur", "Photovoltaïque"], "vign": "carte-etude",
+     "valt": "La façade ouest du pavillon",
+     "sub": "Le pavillon de l'exercice 1.1 face aux exigences de la RE2020 : orientation des pièces, compacité "
+            "comparée à une maison de plain-pied, surface et répartition des vitrages, consommation d'une pompe à "
+            "chaleur ou d'une chaudière à granulés, modules photovoltaïques sur le toit, puis bilan argumenté."},
 ]
 
 
@@ -1370,8 +1633,8 @@ def render_hub():
             f'<h2 class="home-choose">Les exercices</h2><div class="ex-grid exo-grid">{cards}</div>'
             f'<h2 class="home-choose">Études de cas</h2><div class="ex-grid etude-grid">{etudes}</div>'
             f'<p class="home-note small">Pastilles : {pastille("Niveau 1").strip()} premier niveau, '
-            f'{pastille("Niveau 2").strip()} niveau approfondi. Les études de cas reprendront des bâtiments réels et '
-            "mobiliseront plusieurs notions. Chaque exercice propose le mode entraînement (correction question par "
+            f'{pastille("Niveau 2").strip()} niveau approfondi. Une étude de cas mobilise plusieurs notions du cours '
+            "sur un même bâtiment. Chaque exercice propose le mode entraînement (correction question par "
             "question) ou le mode examen (correction à la remise de la copie). Rien n'est enregistré sur "
             "l'ordinateur.</p>")
 

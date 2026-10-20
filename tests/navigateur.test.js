@@ -30,6 +30,10 @@ async function open(url, viewport) {
   return { context, page, errors };
 }
 const text = (page, sel) => page.locator(sel).first().innerText();
+// images partagées (écrites une fois dans la page, posées dans les balises <img data-img> du contenu ouvert) :
+// [nom, largeur décodée] de chacune ; 0 si elle ne s'affiche pas
+const imagesPartagees = (page) => page.evaluate(() => Promise.all([...document.querySelectorAll("img[data-img]")].map((i) =>
+  i.decode().then(() => [i.dataset.img, i.naturalWidth], () => [i.dataset.img, 0]))));
 const sansDebord = (page) => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth);
 // une case se remplit comme le fait l'élève : toucher l'étiquette (dans la liste que la case accepte), puis la case ;
 // sinon, écrire la réponse
@@ -131,6 +135,7 @@ for (const k of COURS)
       assert.equal((await text(page, "#qz-score")).trim(), `${q} / ${q}`);
       assert.equal((await text(page, "#qz-stars")).trim(), "★★★");
     }
+    assert.deepEqual((await imagesPartagees(page)).filter(([, w]) => !w), [], "images partagées affichées");
     await page.emulateMedia({ media: "print" });
     assert.ok(await page.isVisible("#home h1"));
     await page.emulateMedia({ media: "screen" });
@@ -207,6 +212,9 @@ for (const [k, E] of Object.entries(EXOS)) {
       await page.keyboard.press("Escape");
       assert.equal(await page.locator("body.panel-open").count(), 0);
     } else t.diagnostic("pas de document");
+    const images = await imagesPartagees(page);
+    assert.ok(images.length >= 1, "illustration de l'exercice");
+    assert.deepEqual(images.filter(([, w]) => !w), [], "images partagées affichées");
     await page.setViewportSize({ width: 420, height: 860 });
     assert.ok(await sansDebord(page));
     assert.deepEqual(errors, []);
